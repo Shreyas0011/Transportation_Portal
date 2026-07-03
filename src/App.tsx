@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { ToastProvider, useToast } from './components/Toast';
 import { Login } from './pages/auth/Login';
 import { Sidebar } from './components/Sidebar';
@@ -9,68 +9,65 @@ import { DriverDashboard } from './pages/driver/Dashboard';
 import { SuperAdminDashboard } from './pages/superadmin/Dashboard';
 import { initLocalStorageDB } from './utils/db';
 
-interface UserSession {
-  email: string;
-  name: string;
-  role: 'Transport Head' | 'Parent' | 'Driver' | 'Super Admin';
-  studentId?: string;
-  employeeId?: string;
-}
+// ── Zustand stores ──────────────────────────────────────────
+import { useAuthStore, useAppStore } from './store';
+import type { UserSession } from './store';
 
+// ── AppContent (needs access to toast context) ──────────────
 const AppContent: React.FC = () => {
   const toast = useToast();
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('overview');
 
-  // Initialize DB and restore session on mount
+  // Auth store
+  const user    = useAuthStore((s) => s.user);
+  const token   = useAuthStore((s) => s.token);
+  const login   = useAuthStore((s) => s.login);
+  const logout  = useAuthStore((s) => s.logout);
+
+  // Navigation store
+  const activeTab       = useAppStore((s) => s.activeTab);
+  const setActiveTab    = useAppStore((s) => s.setActiveTab);
+  const resetTabForRole = useAppStore((s) => s.resetTabForRole);
+
+  // Initialize localStorage DB on first mount
   useEffect(() => {
     initLocalStorageDB();
-    const storedUser = localStorage.getItem('transport_user');
-    const storedToken = localStorage.getItem('transport_token');
-    
-    if (storedUser && storedToken) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setToken(storedToken);
-      
-      // Set default tab based on role
-      setDefaultTab(parsedUser.role);
-    }
   }, []);
 
-  const setDefaultTab = (role: string) => {
-    if (role === 'Transport Head') {
-      setActiveTab('overview');
-    } else if (role === 'Parent') {
-      setActiveTab('child-info');
-    } else if (role === 'Driver') {
-      setActiveTab('my-schedule');
-    } else if (role === 'Super Admin') {
-      setActiveTab('users');
-    }
-  };
-
+  // ── Handlers ──────────────────────────────────────────────
   const handleLoginSuccess = (loggedInUser: UserSession, accessToken: string) => {
-    localStorage.setItem('transport_user', JSON.stringify(loggedInUser));
-    localStorage.setItem('transport_token', accessToken);
-    setUser(loggedInUser);
-    setToken(accessToken);
-    setDefaultTab(loggedInUser.role);
+    login(loggedInUser, accessToken);
+    resetTabForRole(loggedInUser.role);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('transport_user');
-    localStorage.removeItem('transport_token');
-    setUser(null);
-    setToken(null);
+    logout();
     toast.info('Logged out from Transcend Transport Portal.');
   };
 
-  // Render proper dashboard component
-  const renderDashboardContent = () => {
-    if (!user) return null;
+  // ── Header copy helpers ───────────────────────────────────
+  const getHeaderTitle = () => {
+    switch (user?.role) {
+      case 'Transport Head': return 'Fleet Operator Control Center';
+      case 'Parent':         return 'Parent Transport Console';
+      case 'Driver':         return 'Driver Duty Console';
+      case 'Super Admin':    return 'System Database & Root Control';
+      default:               return 'Institutional Transport Portal';
+    }
+  };
 
+  const getHeaderSubtitle = () => {
+    switch (user?.role) {
+      case 'Transport Head': return 'Manage institutional buses, routes, drivers, stops, and student allocations.';
+      case 'Parent':         return 'Monitor child bus schedules, passenger timings, and alerts.';
+      case 'Driver':         return 'View assigned schedules, passenger sheets, and route sequences.';
+      case 'Super Admin':    return 'Configure staff/parent users, analyze route utilization, and storage controls.';
+      default:               return '';
+    }
+  };
+
+  // ── Role-based dashboard renderer ─────────────────────────
+  const renderDashboard = () => {
+    if (!user) return null;
     switch (user.role) {
       case 'Transport Head':
         return <TransportHeadDashboard activeTab={activeTab} user={user} />;
@@ -85,61 +82,25 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Dynamic Header Title & Subtitle helper
-  const getHeaderTitle = () => {
-    if (!user) return '';
-    switch (user.role) {
-      case 'Transport Head':
-        return 'Fleet Operator Control Center';
-      case 'Parent':
-        return 'Parent Transport Console';
-      case 'Driver':
-        return 'Driver Duty Console';
-      case 'Super Admin':
-        return 'System Database & Root Control';
-      default:
-        return 'Institutional Transport Portal';
-    }
-  };
-
-  const getHeaderSubtitle = () => {
-    if (!user) return '';
-    switch (user.role) {
-      case 'Transport Head':
-        return 'Manage institutional buses, routes, drivers, stops, and student allocations.';
-      case 'Parent':
-        return 'Monitor child bus schedules, passenger timings, and alerts.';
-      case 'Driver':
-        return 'View assigned schedules, passenger sheets, and route sequences.';
-      case 'Super Admin':
-        return 'Configure staff/parent users, analyze route utilization, and storage controls.';
-      default:
-        return '';
-    }
-  };
-
-  // 1. Unauthenticated State
+  // ── Unauthenticated ───────────────────────────────────────
   if (!user || !token) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // 2. Authenticated State
+  // ── Authenticated layout ──────────────────────────────────
   return (
     <div className="dashboard-layout">
-      {/* Sidebar Navigation */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        user={user} 
-        onLogout={handleLogout} 
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        onLogout={handleLogout}
       />
 
-      {/* Main Workspace Area */}
       <main className="main-content">
-        <div className="bg-gradient-glow"></div>
-        <div className="bg-gradient-glow-2"></div>
+        <div className="bg-gradient-glow" />
+        <div className="bg-gradient-glow-2" />
 
-        {/* Dashboard Title Header */}
         <header className="header-container">
           <div className="header-title-section">
             <h1>{getHeaderTitle()}</h1>
@@ -152,19 +113,17 @@ const AppContent: React.FC = () => {
           </div>
         </header>
 
-        {/* Role Specific Page Tab Content */}
-        {renderDashboardContent()}
+        {renderDashboard()}
       </main>
     </div>
   );
 };
 
-const App: React.FC = () => {
-  return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
-  );
-};
+// ── Root (provides Toast context) ─────────────────────────────
+const App: React.FC = () => (
+  <ToastProvider>
+    <AppContent />
+  </ToastProvider>
+);
 
 export default App;
