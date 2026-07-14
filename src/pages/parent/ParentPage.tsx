@@ -1,7 +1,7 @@
 // src/pages/parent/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  Bus, Calendar, Phone, AlertCircle, CheckCircle2, XCircle, UserCheck, Shield
+  Bus, Calendar, Phone, AlertCircle, Edit2, Shield, FileText, Activity, CheckCircle2, XCircle, UserCheck
 } from 'lucide-react';
 import { transportApi } from '../../api/transportApi';
 import { useToast } from '../../components/Toast';
@@ -18,6 +18,44 @@ interface ParentDashboardProps {
   };
 }
 
+const parseHealthRecord = (record: string) => {
+  const lines = record.split('\n');
+  let conditions = '';
+  let instructions = '';
+  let contact = '';
+  let currentSection = '';
+
+  for (const line of lines) {
+    if (line.startsWith('Conditions:')) {
+      conditions = line.substring('Conditions:'.length).trim();
+      currentSection = 'conditions';
+    } else if (line.startsWith('Instructions:')) {
+      instructions = line.substring('Instructions:'.length).trim();
+      currentSection = 'instructions';
+    } else if (line.startsWith('Emergency Contact:')) {
+      contact = line.substring('Emergency Contact:'.length).trim();
+      currentSection = 'contact';
+    } else {
+      if (currentSection === 'conditions') {
+        conditions += (conditions ? '\n' : '') + line;
+      } else if (currentSection === 'instructions') {
+        instructions += (instructions ? '\n' : '') + line;
+      } else if (currentSection === 'contact') {
+        contact += (contact ? '\n' : '') + line;
+      } else {
+        conditions += (conditions ? '\n' : '') + line;
+      }
+    }
+  }
+
+  // Fallback for simple raw string records
+  if (!conditions && !instructions && !contact && record.trim()) {
+    conditions = record.trim();
+  }
+
+  return { conditions, instructions, contact };
+};
+
 export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, user }) => {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -29,11 +67,39 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
   const [route, setRoute] = useState<Route | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  
+  const [isEditingHealth, setIsEditingHealth] = useState(false);
+  const [healthConditions, setHealthConditions] = useState('');
+  const [healthInstructions, setHealthInstructions] = useState('');
+  const [healthContact, setHealthContact] = useState('');
 
   // Attendance marking state
   const [todayAttendanceStatus, setTodayAttendanceStatus] = useState<'Present' | 'Absent' | null>(null);
-  const [todayRecord, setTodayRecord] = useState<Attendance | null>(null);
   const [submittingAttendance, setSubmittingAttendance] = useState(false);
+
+  const handleSaveHealth = async () => {
+    if (!student) return;
+    setLoading(true);
+    const combinedText = [
+      healthConditions.trim() ? `Conditions: ${healthConditions.trim()}` : '',
+      healthInstructions.trim() ? `Instructions: ${healthInstructions.trim()}` : '',
+      healthContact.trim() ? `Emergency Contact: ${healthContact.trim()}` : ''
+    ].filter(Boolean).join('\n');
+
+    try {
+      const updated = await transportApi.updateStudent({
+        ...student,
+        healthRecord: combinedText,
+      });
+      setStudent(updated);
+      setIsEditingHealth(false);
+      toast.success('Student health records updated successfully.');
+    } catch (err) {
+      toast.error('Failed to update student health records.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMarkAttendance = async (status: 'Present' | 'Absent') => {
     if (!student) return;
@@ -48,17 +114,12 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
       studentName: student.studentName,
       route: student.route,
       bus: student.bus,
-      status: status === 'Absent' ? 'Absent' : 'Present',
-      parentDeclaration: status,
-      updatedBy: 'Parent',
-      accountabilityStatus: todayRecord?.accountabilityStatus || undefined,
-      accountabilityNote: todayRecord?.accountabilityNote || undefined,
+      status: status === 'Absent' ? 'Absent' : 'Boarded',
     };
 
     try {
       await transportApi.saveAttendance(record);
       setTodayAttendanceStatus(status);
-      setTodayRecord(record);
       // Refresh attendance list
       const updated = await transportApi.getAttendance();
       const childAtt = updated.filter((a) => a.studentId === student.studentId);
@@ -89,6 +150,11 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
         return;
       }
       setStudent(child);
+      
+      const parsed = parseHealthRecord(child.healthRecord || '');
+      setHealthConditions(parsed.conditions);
+      setHealthInstructions(parsed.instructions);
+      setHealthContact(parsed.contact);
 
       // Fetch other resources in parallel
       const [vehiclesList, driversList, attendanceList, notificationsList, routesList] = await Promise.all([
@@ -113,10 +179,9 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
 
       // Detect today's attendance status set by parent
       const todayStr = new Date().toISOString().split('T')[0];
-      const todayRec = childAttendance.find((a) => a.date === todayStr);
-      setTodayRecord(todayRec || null);
-      if (todayRec) {
-        setTodayAttendanceStatus(todayRec.status === 'Absent' ? 'Absent' : 'Present');
+      const todayRecord = childAttendance.find((a) => a.date === todayStr);
+      if (todayRecord) {
+        setTodayAttendanceStatus(todayRecord.status === 'Absent' ? 'Absent' : 'Present');
       } else {
         setTodayAttendanceStatus(null);
       }
@@ -303,7 +368,246 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
         </div>
       )}
 
+      {/* ── STUDENT HEALTH & MEDICAL DETAILS TAB ── */}
+      {activeTab === 'health' && (
+        <div className="dashboard-panel" style={{ maxWidth: '900px', margin: '0 auto', background: '#ffffff', borderRadius: '16px', boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 8px -1px rgba(0, 0, 0, 0.03)', border: '1px solid #e2e8f0', padding: '30px' }}>
+          
+          {/* Header Section */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #f1f5f9', paddingBottom: '20px', marginBottom: '24px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ background: '#eff6ff', color: '#3b82f6', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Student Safety
+                </span>
+                <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Shield size={10} style={{ fill: '#16a34a' }} /> Secured
+                </span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>
+                Medical & Health Profile
+              </h2>
+              <p style={{ margin: '6px 0 0 0', fontSize: '13.5px', color: '#64748b', lineHeight: 1.5 }}>
+                Ensure your ward's health records are up-to-date. This profile is immediately synced with driver logs.
+              </p>
+            </div>
+            {!isEditingHealth && (
+              <button
+                onClick={() => {
+                  setIsEditingHealth(true);
+                  const parsed = parseHealthRecord(student?.healthRecord || '');
+                  setHealthConditions(parsed.conditions);
+                  setHealthInstructions(parsed.instructions);
+                  setHealthContact(parsed.contact);
+                }}
+                className="btn-edit"
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  padding: '8px 16px', 
+                  fontSize: '13px', 
+                  fontWeight: 600,
+                  backgroundColor: '#3b82f6',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease'
+                }}
+              >
+                <Edit2 size={14} />
+                Edit Profile
+              </button>
+            )}
+          </div>
 
+          {isEditingHealth ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  
+                  {/* Conditions Form Card */}
+                  <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <div style={{ background: '#fee2e2', color: '#ef4444', borderRadius: '8px', display: 'flex', padding: '6px' }}>
+                        <Activity size={16} />
+                      </div>
+                      <label style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>1. Medical Conditions & Allergies</label>
+                    </div>
+                    <textarea
+                      value={healthConditions}
+                      onChange={(e) => setHealthConditions(e.target.value)}
+                      placeholder="e.g. Asthma, Peanut allergy, Penicillin sensitivity. Write 'None' if none."
+                      style={{
+                        width: '100%',
+                        minHeight: '100px',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13.5px',
+                        fontFamily: 'inherit',
+                        resize: 'vertical',
+                        outline: 'none',
+                        lineHeight: 1.5
+                      }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>
+                      List active diagnoses, allergies, or long-term chronic conditions.
+                    </span>
+                  </div>
+
+                  {/* Contact Form Card */}
+                  <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <div style={{ background: '#d1fae5', color: '#10b981', borderRadius: '8px', display: 'flex', padding: '6px' }}>
+                        <Phone size={16} />
+                      </div>
+                      <label style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>3. Primary Physician / Emergency Contact</label>
+                    </div>
+                    <input
+                      type="text"
+                      value={healthContact}
+                      onChange={(e) => setHealthContact(e.target.value)}
+                      placeholder="e.g. Dr. Verma: +91 98800 12345"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13.5px',
+                        fontFamily: 'inherit',
+                        outline: 'none'
+                      }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>
+                      Primary pediatrician or alternative family doctor.
+                    </span>
+                  </div>
+
+                </div>
+
+                {/* Instructions Form Card */}
+                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{ background: '#eff6ff', color: '#3b82f6', borderRadius: '8px', display: 'flex', padding: '6px' }}>
+                      <FileText size={16} />
+                    </div>
+                    <label style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>2. Emergency Action Plan / Instructions</label>
+                  </div>
+                  <textarea
+                    value={healthInstructions}
+                    onChange={(e) => setHealthInstructions(e.target.value)}
+                    placeholder="e.g. Keep inhaler in side pocket of backpack. Help student take 2 puffs if short of breath."
+                    style={{
+                      width: '100%',
+                      flexGrow: 1,
+                      minHeight: '180px',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13.5px',
+                      fontFamily: 'inherit',
+                      resize: 'none',
+                      outline: 'none',
+                      lineHeight: 1.5
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'block' }}>
+                    Actionable instructions for the bus driver and route supervisors.
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+                <button
+                  onClick={() => {
+                    setIsEditingHealth(false);
+                    const parsed = parseHealthRecord(student?.healthRecord || '');
+                    setHealthConditions(parsed.conditions);
+                    setHealthInstructions(parsed.instructions);
+                    setHealthContact(parsed.contact);
+                  }}
+                  className="btn-cancel"
+                  style={{ padding: '10px 20px', fontSize: '13.5px', borderRadius: '8px', fontWeight: 600 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveHealth}
+                  className="btn-submit"
+                  style={{ padding: '10px 20px', fontSize: '13.5px', borderRadius: '8px', fontWeight: 600, backgroundColor: '#10b981', color: '#ffffff', border: 'none' }}
+                >
+                  Save Profile
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+              
+              {/* Left column details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', gridColumn: 'span 2' }}>
+                
+                {/* Conditions Preview Card */}
+                <div style={{ background: '#ffffff', borderLeft: '4px solid #ef4444', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderTop: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <Activity size={16} style={{ color: '#ef4444' }} />
+                    <strong style={{ fontSize: '12px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Medical Conditions & Allergies
+                    </strong>
+                  </div>
+                  <p style={{ fontSize: '15px', color: '#0f172a', margin: 0, fontWeight: 600, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {healthConditions || 'None reported'}
+                  </p>
+                </div>
+
+                {/* Instructions Preview Card */}
+                <div style={{ background: '#ffffff', borderLeft: '4px solid #3b82f6', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderTop: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <FileText size={16} style={{ color: '#3b82f6' }} />
+                    <strong style={{ fontSize: '12px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Emergency Transit Instructions
+                    </strong>
+                  </div>
+                  <p style={{ fontSize: '15px', color: '#0f172a', margin: 0, fontWeight: 600, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {healthInstructions || 'No custom emergency action plan / transit instructions provided.'}
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Right column details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
+                {/* Doctor Preview Card */}
+                <div style={{ background: '#ffffff', borderLeft: '4px solid #10b981', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderTop: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <Phone size={16} style={{ color: '#10b981' }} />
+                    <strong style={{ fontSize: '12px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Primary Pediatrician / Doctor
+                    </strong>
+                  </div>
+                  <p style={{ fontSize: '15px', color: '#0f172a', margin: 0, fontWeight: 600, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {healthContact || 'None specified'}
+                  </p>
+                </div>
+
+                {/* Info Disclaimer Card */}
+                <div style={{ background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#64748b' }}>
+                    <Shield size={16} />
+                    <strong style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Privacy & Security</strong>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                    This medical information is strictly confidential. It is only accessible to the assigned bus driver, transport staff, and school admins for safety reasons.
+                  </p>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── ATTENDANCE LOGS TAB ── */}
       {activeTab === 'child-attendance' && (
@@ -339,15 +643,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                       <td style={{ fontWeight: 500 }}>{record.route}</td>
                       <td style={{ fontWeight: 600 }}>{record.bus}</td>
                       <td>
-                        <span className={`badge ${
-                          record.status === 'Absent' ? 'absent'
-                          : record.status === 'No-Show' ? 'danger'
-                          : record.status === 'Boarded' ? 'active'
-                          : record.status === 'Dropped' ? 'info'
-                          : 'active'
-                        }`}>
-                          {record.status}
-                        </span>
+                        <span className={`badge ${record.status.toLowerCase()}`}>{record.status}</span>
                       </td>
                     </tr>
                   ))
@@ -395,22 +691,9 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '4px' }}>Today's Status</span>
-                      {todayRecord ? (
-                        <span 
-                          className={`badge ${
-                            todayRecord.status === 'Absent' ? 'absent'
-                            : todayRecord.status === 'No-Show' ? 'danger'
-                            : todayRecord.status === 'Boarded' ? 'active'
-                            : todayRecord.status === 'Dropped' ? 'info'
-                            : 'active'
-                          }`} 
-                          style={{ fontSize: '13px', padding: '4px 12px' }}
-                        >
-                          {todayRecord.status === 'Absent' ? '✕ Absent' 
-                           : todayRecord.status === 'No-Show' ? '✕ No-Show' 
-                           : todayRecord.status === 'Boarded' ? '✓ Boarded' 
-                           : todayRecord.status === 'Dropped' ? '✓ Dropped' 
-                           : '✓ Present'}
+                      {todayAttendanceStatus ? (
+                        <span className={`badge ${todayAttendanceStatus === 'Absent' ? 'absent' : 'active'}`} style={{ fontSize: '13px', padding: '4px 12px' }}>
+                          {todayAttendanceStatus === 'Absent' ? '✕ Absent' : '✓ Present'}
                         </span>
                       ) : (
                         <span className="badge inactive" style={{ fontSize: '13px', padding: '4px 12px' }}>Not Marked</span>
@@ -418,30 +701,6 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                     </div>
                   </div>
                 </div>
-
-                {/* Discrepancy Warnings */}
-                {todayRecord?.status === 'No-Show' && (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '14px', padding: '16px 20px', display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '20px' }}>
-                    <AlertCircle size={22} style={{ color: '#ef4444', marginTop: '2px', flexShrink: 0 }} />
-                    <div style={{ flexGrow: 1 }}>
-                      <strong style={{ color: '#991b1b', fontSize: '14px', display: 'block', marginBottom: '4px' }}>Boarding Discrepancy Alert!</strong>
-                      <p style={{ margin: 0, fontSize: '13px', color: '#7f1d1d', lineHeight: 1.5 }}>
-                        Your ward was marked <strong>Present</strong>, but the driver reported a <strong>No-Show</strong> (did not board the bus). Please verify if they traveled via alternate transit.
-                      </p>
-                      {todayRecord?.accountabilityStatus === 'Warned' && (
-                        <div style={{ marginTop: '12px', padding: '12px', background: '#fee2e2', borderRadius: '10px', borderLeft: '4px solid #dc2626' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#991b1b', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Official Fleet Warning Notice</span>
-                          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#7f1d1d', lineHeight: 1.4 }}>
-                            <strong>Transport Head Notice:</strong> Parents are held accountable for unannounced absences from scheduled routes. Please verify transit details.
-                            {todayRecord?.accountabilityNote && (
-                              <span><br /><strong>Office Note:</strong> {todayRecord.accountabilityNote}</span>
-                            )}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* Attendance Action Card */}
                 <div className="dashboard-panel" style={{ marginBottom: '20px' }}>

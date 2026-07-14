@@ -1,7 +1,7 @@
 // src/pages/driver/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, Calendar, Phone, AlertCircle, MapPin
+  Users, Calendar, Phone, AlertCircle, MapPin, Heart
 } from 'lucide-react';
 import { transportApi } from '../../api/transportApi';
 import { useToast } from '../../components/Toast';
@@ -72,41 +72,6 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ activeTab, use
       setAttendance(attendanceList);
     } catch (err: any) {
       toast.error('Failed to load driver duty schedules.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdatePassengerStatus = async (student: Student, newStatus: Attendance['status']) => {
-    setLoading(true);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const recordId = `ATT-${student.studentId}-${todayStr}`;
-
-    const existingRec = attendance.find((a) => a.id === recordId);
-
-    const record: Attendance = {
-      id: recordId,
-      date: todayStr,
-      studentId: student.studentId,
-      studentName: student.studentName,
-      route: student.route,
-      bus: student.bus,
-      status: newStatus,
-      parentDeclaration: existingRec?.parentDeclaration || (newStatus === 'Absent' ? 'Absent' : 'Present'),
-      actualBoarding: newStatus === 'Absent' ? undefined : (newStatus as any),
-      updatedBy: 'Driver',
-      accountabilityStatus: newStatus === 'No-Show' ? (existingRec?.accountabilityStatus || 'Pending') : existingRec?.accountabilityStatus,
-      accountabilityNote: existingRec?.accountabilityNote,
-    };
-
-    try {
-      await transportApi.saveAttendance(record);
-      toast.success(`Passenger ${student.studentName} marked as ${newStatus}`);
-      // Reload attendance lists
-      const updated = await transportApi.getAttendance();
-      setAttendance(updated);
-    } catch (err) {
-      toast.error('Failed to update passenger boarding status');
     } finally {
       setLoading(false);
     }
@@ -346,7 +311,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ activeTab, use
                   <th>Drop Stop</th>
                   <th>Parent Contact</th>
                   <th>Today's Status</th>
-                  <th>Verification Controls</th>
+                  <th>Health & Medical Info</th>
                 </tr>
               </thead>
               <tbody>
@@ -382,76 +347,76 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ activeTab, use
                           <span
                             className={`badge ${
                               todayStatus === 'Absent' ? 'absent'
-                              : todayStatus === 'No-Show' ? 'danger'
                               : todayStatus === 'Dropped' ? 'info'
                               : todayStatus === 'Boarded' ? 'active'
-                              : todayStatus === 'Present' ? 'warning'
                               : 'inactive'
                             }`}
                           >
-                            {todayStatus === 'Present' ? 'Declared Present' : todayStatus}
+                            {todayStatus}
                           </span>
                         </td>
-                        <td>
-                          <div className="btn-action-group" style={{ gap: '6px' }}>
-                            {/* Board Button */}
-                            {(todayStatus === 'Present' || todayStatus === 'Not Marked' || todayStatus === 'Absent' || todayStatus === 'No-Show') && (
-                              <button
-                                type="button"
-                                className="btn-add"
-                                style={{ padding: '6px 12px', fontSize: '11px', background: '#10b981', borderColor: '#10b981', color: '#fff' }}
-                                onClick={() => handleUpdatePassengerStatus(s, 'Boarded')}
-                              >
-                                Board
-                              </button>
-                            )}
-                            {/* Drop Off Button */}
-                            {todayStatus === 'Boarded' && (
-                              <button
-                                type="button"
-                                className="btn-add"
-                                style={{ padding: '6px 12px', fontSize: '11px', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}
-                                onClick={() => handleUpdatePassengerStatus(s, 'Dropped')}
-                              >
-                                Drop Off
-                              </button>
-                            )}
-                            {/* No-Show Button */}
-                            {(todayStatus === 'Present' || todayStatus === 'Boarded') && (
-                              <button
-                                type="button"
-                                className="btn-danger"
-                                style={{ padding: '6px 12px', fontSize: '11px', color: '#fff' }}
-                                onClick={() => handleUpdatePassengerStatus(s, 'No-Show')}
-                              >
-                                No-Show
-                              </button>
-                            )}
-                            {/* Absent Button */}
-                            {todayStatus === 'Not Marked' && (
-                              <button
-                                type="button"
-                                className="btn-cancel"
-                                style={{ padding: '6px 12px', fontSize: '11px', background: '#64748b', color: '#fff', border: 'none' }}
-                                onClick={() => handleUpdatePassengerStatus(s, 'Absent')}
-                              >
-                                Absent
-                              </button>
-                            )}
-                            {/* Done label */}
-                            {todayStatus === 'Dropped' && (
-                              <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#10b981' }}>
-                                Journey Completed ✓
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                        <td>{s.healthRecord || 'None'}</td>
                       </tr>
                     );
                   });
                 })()}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── DRIVER MEDICAL ALERTS TAB ── */}
+      {activeTab === 'health' && (
+        <div className="dashboard-panel">
+          <div className="panel-header">
+            <h2 className="panel-title">
+              <Heart size={18} />
+              <span>Route Medical Alerts</span>
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
+            {(() => {
+              const complications = passengers.filter(
+                (s) => s.healthRecord && s.healthRecord.trim() !== '' && s.healthRecord.toLowerCase() !== 'none'
+              );
+
+              if (complications.length === 0) {
+                return (
+                  <p style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>
+                    No passengers with registered medical conditions on this route.
+                  </p>
+                );
+              }
+
+              return (
+                <div className="table-container">
+                  <table className="modern-table">
+                    <thead>
+                      <tr>
+                        <th>Student Name</th>
+                        <th>Student ID</th>
+                        <th>Pickup/Drop Stop</th>
+                        <th>Parent Contact</th>
+                        <th>Medical Record</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {complications.map((s) => (
+                        <tr key={s.studentId}>
+                          <td style={{ fontWeight: 700 }}>{s.studentName}</td>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{s.studentId}</td>
+                          <td>{s.pickupStop} / {s.dropStop}</td>
+                          <td>{s.parentContact}</td>
+                          <td style={{ color: '#991b1b', fontWeight: 600 }}>{s.healthRecord}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

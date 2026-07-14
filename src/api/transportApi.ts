@@ -1,6 +1,6 @@
 // src/api/transportApi.ts
 import axiosInstance from './axios';
-import type { User, Vehicle, Driver, Route, Student, Attendance, Notification } from '../utils/db';
+import type { User, Vehicle, Driver, Route, Student, Attendance, Notification, FastagLog, SafetyAlert } from '../utils/db';
 
 export const transportApi = {
   // Auth
@@ -125,5 +125,25 @@ export const transportApi = {
   resetUserPassword: async (email: string, password: string) => {
     const response = await axiosInstance.put(`/users/${encodeURIComponent(email)}/password`, { password });
     return response.data;
+  },
+
+  // Fastag Gate Logs
+  getFastagLogs: async () => {
+    const response = await axiosInstance.get('/fastag/logs');
+    return response.data as FastagLog[];
+  },
+  addFastagLog: async (log: Omit<FastagLog, 'id' | 'timestamp'>) => {
+    const response = await axiosInstance.post('/fastag/logs', log);
+    return response.data as FastagLog;
+  },
+
+  // Safety & Dashcam Alerts
+  getSafetyAlerts: async () => {
+    const response = await axiosInstance.get('/safety/alerts');
+    return response.data as SafetyAlert[];
+  },
+  resolveSafetyAlert: async (id: string) => {
+    const response = await axiosInstance.put(`/safety/alerts/${encodeURIComponent(id)}/resolve`);
+    return response.data as SafetyAlert;
   },
 };

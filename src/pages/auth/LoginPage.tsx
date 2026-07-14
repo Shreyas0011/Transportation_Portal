@@ -81,7 +81,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <img src="/transcend-logo.png" alt="Transcend Logo" style={{ maxHeight: '60px', objectFit: 'contain' }} />
         </div>
 
-        <h1 className="modern-login-title">Transport Management</h1>
+        <h1 className="modern-login-title">Transport Management Portal</h1>
         <p className="modern-login-subtitle">Sign in to your transport operator portal</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

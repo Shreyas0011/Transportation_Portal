@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { 
   Bus, Users, MapPin, ClipboardList, Bell, Shield, 
-  LogOut, Menu, X, Calendar, UserCheck, Settings, Home
+  LogOut, Menu, X, Calendar, UserCheck, Settings, Home, Heart
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -36,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'routes', label: 'Route & Stops', icon: <MapPin size={18} /> },
           { id: 'drivers', label: 'Driver Management', icon: <Users size={18} /> },
           { id: 'students', label: 'Student Allocation', icon: <ClipboardList size={18} /> },
+          { id: 'health', label: 'Health Alerts', icon: <Heart size={18} style={{ color: '#ef4444' }} /> },
           { id: 'attendance', label: 'Attendance Board', icon: <UserCheck size={18} /> },
           { id: 'telematics', label: 'Fleet Telematics & Security', icon: <Shield size={18} /> },
           { id: 'notifications', label: 'Announcements', icon: <Bell size={18} /> },
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return [
           { id: 'child-info', label: 'My Child Info', icon: <Users size={18} /> },
           { id: 'today-attendance', label: 'Mark Attendance', icon: <UserCheck size={18} style={{ color: '#10b981' }} /> },
+          { id: 'health', label: 'Student Health', icon: <Heart size={18} style={{ color: '#ef4444' }} /> },
           { id: 'child-attendance', label: 'Attendance Logs', icon: <ClipboardList size={18} /> },
           { id: 'notifications', label: 'Announcements', icon: <Bell size={18} /> },
         ];
@@ -51,11 +53,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return [
           { id: 'my-schedule', label: 'Daily Route Summary', icon: <Calendar size={18} /> },
           { id: 'student-list', label: 'Student Passengers', icon: <Users size={18} /> },
+          { id: 'health', label: 'Medical Alerts', icon: <Heart size={18} style={{ color: '#ef4444' }} /> },
         ];
       case 'Super Admin':
         return [
           { id: 'users', label: 'User & Roles', icon: <Shield size={18} /> },
           { id: 'students', label: 'Student Directory', icon: <ClipboardList size={18} /> },
+          { id: 'health', label: 'Health Records', icon: <Heart size={18} style={{ color: '#ef4444' }} /> },
           { id: 'attendance', label: 'Attendance Overview', icon: <UserCheck size={18} /> },
           { id: 'analytics', label: 'Analytics dashboard', icon: <Home size={18} /> },
           { id: 'database', label: 'System Control', icon: <Settings size={18} /> },

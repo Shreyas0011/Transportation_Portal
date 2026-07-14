@@ -2,7 +2,7 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import { dbService } from '../utils/db';
-import type { User, Vehicle, Driver, Route, Attendance, Notification, Student } from '../utils/db';
+import type { User, Vehicle, Driver, Route, Attendance, Notification, Student, FastagLog } from '../utils/db';
 
 const axiosInstance = axios.create({
   baseURL: '/api',
@@ -24,7 +24,7 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
   try {
     // ── 1. AUTH ENDPOINTS ──
     if (url.includes('/auth/login') && method === 'post') {
-      const { email } = data;
+      const { email, password } = data;
       const users = dbService.getUsers();
       const user = users.find(
         (u) => u.email.toLowerCase() === email.toLowerCase() && u.isActive
@@ -32,6 +32,10 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
 
       if (!user) {
         throw new Error('User not found or deactivated');
+      }
+
+      if (user.password && user.password !== password) {
+        throw new Error('Incorrect password');
       }
 
       // Successful login
@@ -502,6 +506,51 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
         users.splice(index, 1);
         dbService.saveUsers(users);
         return { data: { success: true }, status: 200, statusText: 'OK', headers: {}, config };
+      }
+    }
+
+    // ── 9. FASTAG ACCESS LOGS ──
+    if (url.includes('/fastag/logs')) {
+      const logs = dbService.getFastagLogs();
+      if (method === 'get') {
+        return { data: logs, status: 200, statusText: 'OK', headers: {}, config };
+      }
+      if (method === 'post') {
+        const newLog: FastagLog = {
+          ...data,
+          id: `FT-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+          timestamp: new Date().toISOString()
+        };
+        logs.unshift(newLog); // latest first
+        dbService.saveFastagLogs(logs);
+
+        // Optional: Update vehicle location status on gate entry/exit
+        const vehicles = dbService.getVehicles();
+        const vIndex = vehicles.findIndex((v) => v.vehicleNumber === newLog.vehicleNumber);
+        if (vIndex !== -1) {
+          vehicles[vIndex].status = newLog.direction === 'Entry' ? 'Active' : 'Active'; // Keep status Active but sync is done
+          dbService.saveVehicles(vehicles);
+        }
+
+        return { data: newLog, status: 201, statusText: 'Created', headers: {}, config };
+      }
+    }
+
+    // ── 10. SAFETY ALERTS ──
+    if (url.includes('/safety/alerts')) {
+      const alerts = dbService.getSafetyAlerts();
+      if (method === 'get') {
+        return { data: alerts, status: 200, statusText: 'OK', headers: {}, config };
+      }
+      if (url.endsWith('/resolve') && method === 'put') {
+        const parts = url.split('/');
+        const resolveIndex = parts.indexOf('resolve');
+        const alertId = decodeURIComponent(parts[resolveIndex - 1] || '');
+        const index = alerts.findIndex((a) => a.id === alertId);
+        if (index === -1) throw new Error('Safety Alert not found');
+        alerts[index].resolved = true;
+        dbService.saveSafetyAlerts(alerts);
+        return { data: alerts[index], status: 200, statusText: 'OK', headers: {}, config };
       }
     }
 
