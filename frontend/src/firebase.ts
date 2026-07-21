@@ -1,22 +1,37 @@
 // src/firebase.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
 import type { Messaging } from 'firebase/messaging';
 
+// Firebase project configuration — values loaded from VITE_ env variables.
+// For Vercel deployment, set all VITE_FIREBASE_* variables in the Vercel dashboard.
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || ''
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
 };
 
 const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
 
-// Initialize Firebase
+// Initialize Firebase app (prevent duplicate initialization during HMR)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
+// Initialize Firebase Analytics (only in browser environments that support it)
+if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
+  isAnalyticsSupported().then((supported) => {
+    if (supported) {
+      getAnalytics(app);
+      console.log('[Firebase] Analytics initialized');
+    }
+  }).catch(() => {});
+}
+
+// Initialize Firebase Cloud Messaging
 let messaging: Messaging | null = null;
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator && firebaseConfig.projectId) {
   try {
@@ -29,23 +44,29 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator && firebaseCon
 export { app, messaging };
 
 /**
- * Request FCM Token for current browser session
+ * Request permission and generate FCM push token for this browser session.
+ * Returns the token string if successful, or null if denied / unavailable.
  */
 export const requestFcmToken = async (): Promise<string | null> => {
   if (!messaging) {
-    console.warn('[Firebase Client] FCM messaging instance unavailable. Ensure VITE_FIREBASE_* environment variables are set.');
+    console.warn(
+      '[Firebase Client] FCM messaging is unavailable. ' +
+      'Ensure all VITE_FIREBASE_* environment variables are set.'
+    );
     return null;
   }
 
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      console.log('[Firebase Client] Notification permission denied or dismissed by user.');
+      console.log('[Firebase Client] Notification permission denied or dismissed.');
       return null;
     }
 
-    // Register service worker if available
-    const serviceWorkerRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    // Register service worker for background notifications
+    const serviceWorkerRegistration = await navigator.serviceWorker.register(
+      '/firebase-messaging-sw.js'
+    );
 
     const token = await getToken(messaging, {
       vapidKey: vapidKey || undefined,
@@ -53,10 +74,10 @@ export const requestFcmToken = async (): Promise<string | null> => {
     });
 
     if (token) {
-      console.log('[Firebase Client] FCM Registration Token generated:', token.slice(0, 15) + '...');
+      console.log('[Firebase Client] FCM token generated successfully.');
       return token;
     } else {
-      console.warn('[Firebase Client] No registration token available.');
+      console.warn('[Firebase Client] No registration token available. Check VAPID key.');
       return null;
     }
   } catch (error) {
@@ -66,12 +87,13 @@ export const requestFcmToken = async (): Promise<string | null> => {
 };
 
 /**
- * Listen to foreground messages
+ * Listen for push messages while the app is in the foreground.
+ * Returns an unsubscribe function.
  */
 export const onForegroundMessage = (callback: (payload: any) => void) => {
   if (!messaging) return () => {};
   return onMessage(messaging, (payload) => {
-    console.log('[Firebase Client] Foreground message received:', payload);
+    console.log('[Firebase Client] Foreground push message received:', payload);
     callback(payload);
   });
 };
