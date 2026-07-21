@@ -1,0 +1,4 @@
+[
+  { "email": "head@transcend.org", "password": "head123", "role": "Transport Head", "name": "Transport Head Admin", "employeeId": "EMP-HEAD-001", "isActive": true },
+  { "email": "superadmin@transcend.org", "password": "super123", "role": "Super Admin", "name": "System Super Admin", "employeeId": "EMP-SAD-001", "isActive": true }
+]

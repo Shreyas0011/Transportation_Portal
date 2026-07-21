@@ -1,0 +1,4 @@
+[
+  { "vehicleNumber": "KA-53-F-1234", "registrationNumber": "REG-KA53F1234", "vehicleModel": "School Bus 2024", "seatingCapacity": 40, "driverAssigned": "Driver One", "routeAssigned": "Route 01", "status": "Active" },
+  { "vehicleNumber": "KA-01-XX-0020", "registrationNumber": "REG-KA01XX0020", "vehicleModel": "Maruti Eeco", "seatingCapacity": 7, "driverAssigned": "Driver Two", "routeAssigned": "Route 02", "status": "Active" }
+]

@@ -99,7 +99,7 @@ export interface User {
   isActive: boolean;
 }
 
-const DB_VERSION = 'v3.0';
+const DB_VERSION = 'v4.0';
 
 const DEFAULT_USERS: User[] = [
   {

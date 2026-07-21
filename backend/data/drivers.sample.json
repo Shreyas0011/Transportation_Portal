@@ -1,0 +1,5 @@
+[
+  { "slNo": 1, "mode": "Ecco Car", "plate": "KA05AL8080", "name": "Driver One", "phone": "9900000001", "empId": "EMP-DRV-001", "route": "Route Ecco Car" },
+  { "slNo": 2, "mode": "Route No 01", "plate": "KA05AL1642", "name": "Driver Two", "phone": "9900000002", "empId": "EMP-DRV-002", "route": "Route 01" },
+  { "slNo": 3, "mode": "Route No 02", "plate": "KA05AL1645", "name": "Driver Three", "phone": "9900000003", "empId": "EMP-DRV-003", "route": "Route 02" }
+]
