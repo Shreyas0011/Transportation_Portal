@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, FileText, Download, X, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useCallback } from 'react';
+import { Upload, FileText, Download, X, Check, AlertCircle, FileCheck2, RefreshCw } from 'lucide-react';
 import { transportApi } from '../api/transportApi';
 import type { Student } from '../utils/db';
 
@@ -18,110 +18,120 @@ export const BulkStudentUploadModal: React.FC<BulkStudentUploadModalProps> = ({
   const [parsedStudents, setParsedStudents] = useState<Student[]>([]);
   const [parsingError, setParsingError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
   const downloadSampleCSV = () => {
-    const csvHeader = "studentName,studentId,route,bus,pickupStop,dropStop,parentContact,parentEmail,healthRecord\n";
-    const sampleRow1 = "Aarav Sharma,251P3001,Route 01,KA05AL1642,Main Depot,Campus Hub,+91 9876543210,parent3001@transcend.org,None\n";
-    const sampleRow2 = "Diya Patel,251P3002,Route 02,KA05AL1645,South Gate,Campus Hub,+91 9876543211,parent3002@transcend.org,Asthma\n";
-    
-    const blob = new Blob([csvHeader + sampleRow1 + sampleRow2], { type: 'text/csv;charset=utf-8;' });
+    const rows = [
+      'studentName,studentId,route,bus,pickupStop,dropStop,parentContact,parentEmail,healthRecord',
+      'Aarav Sharma,251P3001,Route 01,KA05AL1642,Main Depot,Campus Hub,+91 9876543210,parent3001@transcend.org,None',
+      'Diya Patel,251P3002,Route 02,KA05AL1645,South Gate,Campus Hub,+91 9876543211,parent3002@transcend.org,Asthma',
+    ].join('\n');
+
+    const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'student_import_sample_template.csv');
+    link.setAttribute('download', 'student_import_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const parseFileContent = (text: string) => {
-    try {
-      setParsingError(null);
-      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
-      if (lines.length < 2) {
-        setParsingError('File contains no student data rows. Minimum 1 header row + 1 data row required.');
-        setParsedStudents([]);
-        return;
-      }
+  const parseText = (text: string) => {
+    setParsingError(null);
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
 
-      // Parse headers
-      const headers = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
-
-      const getIdx = (aliases: string[]) => headers.findIndex((h) => aliases.some((a) => h.includes(a)));
-
-      const nameIdx = getIdx(['studentname', 'name', 'student']);
-      const idIdx = getIdx(['studentid', 'id', 'roll']);
-      const routeIdx = getIdx(['route', 'assignedroute']);
-      const busIdx = getIdx(['bus', 'vehicle', 'plate']);
-      const pickupIdx = getIdx(['pickup', 'pickupstop']);
-      const dropIdx = getIdx(['drop', 'dropstop']);
-      const phoneIdx = getIdx(['parentcontact', 'contact', 'phone', 'mobile']);
-      const emailIdx = getIdx(['parentemail', 'email']);
-      const healthIdx = getIdx(['health', 'healthrecord', 'medical']);
-
-      const parsedList: Student[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        // Handle CSV split with quote protection
-        const row = lines[i].split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/).map((cell) => cell.trim().replace(/^["']|["']$/g, ''));
-        if (row.length === 0 || row.every((c) => c === '')) continue;
-
-        const name = nameIdx !== -1 && row[nameIdx] ? row[nameIdx] : '';
-        const id = idIdx !== -1 && row[idIdx] ? row[idIdx] : '';
-
-        if (!name && !id) continue;
-
-        parsedList.push({
-          studentName: name || `Student ${i}`,
-          studentId: id || `STU-2026-${String(i).padStart(3, '0')}`,
-          route: routeIdx !== -1 && row[routeIdx] ? row[routeIdx] : 'None',
-          bus: busIdx !== -1 && row[busIdx] ? row[busIdx] : 'None',
-          pickupStop: pickupIdx !== -1 && row[pickupIdx] ? row[pickupIdx] : 'None',
-          dropStop: dropIdx !== -1 && row[dropIdx] ? row[dropIdx] : 'None',
-          parentContact: phoneIdx !== -1 && row[phoneIdx] ? row[phoneIdx] : '+91 99000 00000',
-          parentEmail: emailIdx !== -1 && row[emailIdx] ? row[emailIdx] : '',
-          healthRecord: healthIdx !== -1 && row[healthIdx] ? row[healthIdx] : 'None'
-        });
-      }
-
-      if (parsedList.length === 0) {
-        setParsingError('Could not parse any valid student rows from file. Check headers and format.');
-      } else {
-        setParsedStudents(parsedList);
-      }
-    } catch (err: any) {
-      setParsingError(`Failed to parse file: ${err.message}`);
+    if (lines.length < 2) {
+      setParsingError('File must have at least 1 header row and 1 data row.');
       setParsedStudents([]);
+      return;
+    }
+
+    const headers = lines[0]
+      .split(',')
+      .map((h) => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+
+    const find = (aliases: string[]) =>
+      headers.findIndex((h) => aliases.some((a) => h.includes(a)));
+
+    const col = {
+      name: find(['studentname', 'name', 'student']),
+      id: find(['studentid', 'id', 'roll']),
+      route: find(['route', 'assignedroute']),
+      bus: find(['bus', 'vehicle', 'plate']),
+      pickup: find(['pickup', 'pickupstop']),
+      drop: find(['drop', 'dropstop']),
+      phone: find(['parentcontact', 'contact', 'phone', 'mobile']),
+      email: find(['parentemail', 'email']),
+      health: find(['health', 'healthrecord', 'medical']),
+    };
+
+    const get = (row: string[], idx: number) =>
+      idx !== -1 && row[idx] ? row[idx].trim().replace(/^["']|["']$/g, '') : '';
+
+    const result: Student[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+      if (row.every((c) => c.trim() === '')) continue;
+
+      const name = get(row, col.name);
+      const id = get(row, col.id);
+      if (!name && !id) continue;
+
+      result.push({
+        studentName: name || `Student ${i}`,
+        studentId: id || `STU-2026-${String(i).padStart(3, '0')}`,
+        route: get(row, col.route) || 'None',
+        bus: get(row, col.bus) || 'None',
+        pickupStop: get(row, col.pickup) || 'None',
+        dropStop: get(row, col.drop) || 'None',
+        parentContact: get(row, col.phone) || '+91 99000 00000',
+        parentEmail: get(row, col.email) || '',
+        healthRecord: get(row, col.health) || 'None',
+      });
+    }
+
+    if (result.length === 0) {
+      setParsingError('No valid rows found. Please check your file headers and data.');
+    } else {
+      setParsedStudents(result);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    setFile(selectedFile);
-
+  const processFile = (f: File) => {
+    setFile(f);
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      parseFileContent(content || '');
-    };
-    reader.onerror = () => {
-      setParsingError('Failed to read file content.');
-    };
-    reader.readAsText(selectedFile);
+    reader.onload = (e) => parseText((e.target?.result as string) || '');
+    reader.onerror = () => setParsingError('Failed to read file.');
+    reader.readAsText(f);
   };
 
-  const handleImportSubmit = async () => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) processFile(f);
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) processFile(f);
+  }, []);
+
+  const handleImport = async () => {
     if (parsedStudents.length === 0) return;
     setIsImporting(true);
     try {
       await transportApi.bulkAddStudents(parsedStudents);
       onSuccess(parsedStudents.length);
-      handleResetAndClose();
+      handleClose();
     } catch (err: any) {
       setParsingError(`Import failed: ${err.message || 'Server error'}`);
     } finally {
@@ -129,188 +139,260 @@ export const BulkStudentUploadModal: React.FC<BulkStudentUploadModalProps> = ({
     }
   };
 
-  const handleResetAndClose = () => {
+  const handleClose = () => {
     setFile(null);
     setParsedStudents([]);
     setParsingError(null);
+    setIsDragging(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
     onClose();
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container" style={{ maxWidth: '750px', width: '90%' }}>
-        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileText size={20} color="#2563eb" />
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Bulk Student Import (CSV / Excel)</h3>
+    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
+      <div
+        className="modal"
+        style={{ maxWidth: '680px', width: '92%', maxHeight: '90vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ── Header ─────────────────────────────────────── */}
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: 'var(--primary-glow)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <FileText size={18} color="var(--primary)" />
+            </div>
+            <div>
+              <h3 style={{ margin: 0 }}>Bulk Student Import</h3>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+                Upload a CSV or plain text file to import multiple students at once
+              </p>
+            </div>
           </div>
-          <button className="btn-icon" onClick={handleResetAndClose} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
-            <X size={20} />
+          <button className="modal-close" onClick={handleClose}>
+            <X size={18} />
           </button>
         </div>
 
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* File Picker & Sample Template Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        {/* ── Body ───────────────────────────────────────── */}
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Info bar + template download */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 12, padding: '10px 14px',
+            background: 'var(--primary-glow)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-sm)',
+          }}>
             <div>
-              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-                Upload `.csv` or `.txt` formatted spreadsheet.
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Supported formats: <code style={{ background: '#e0e7ff', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>.csv</code>{' '}
+                <code style={{ background: '#e0e7ff', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>.txt</code>
               </p>
-              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                Supported columns: studentName, studentId, route, bus, pickupStop, dropStop, parentContact
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                Columns: studentName · studentId · route · bus · pickupStop · dropStop · parentContact
               </p>
             </div>
             <button
               type="button"
               onClick={downloadSampleCSV}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: 600,
-                color: '#2563eb',
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: '6px',
-                cursor: 'pointer'
+                flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 13px', borderRadius: 'var(--radius-sm)',
+                fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                background: 'white', color: 'var(--primary)',
+                border: '1px solid var(--primary)',
+                cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
-              <Download size={14} />
+              <Download size={13} />
               Sample Template
             </button>
           </div>
 
-          {/* Upload Drop Area */}
+          {/* Drop zone */}
           <div
             onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
             style={{
-              border: '2px dashed #cbd5e1',
-              borderRadius: '10px',
-              padding: '24px',
+              border: `2px dashed ${file ? 'var(--success)' : isDragging ? 'var(--primary)' : '#cbd5e1'}`,
+              borderRadius: 'var(--radius-md)',
+              padding: '28px 24px',
               textAlign: 'center',
               cursor: 'pointer',
-              background: file ? '#f0fdf4' : '#fafafa',
-              borderColor: file ? '#22c55e' : '#cbd5e1',
-              transition: 'all 0.2s ease'
+              background: file ? 'var(--success-glow)' : isDragging ? 'var(--primary-glow)' : 'var(--bg-input)',
+              transition: 'all 0.2s ease',
             }}
           >
             <input
               type="file"
               ref={fileInputRef}
-              accept=".csv, .txt, .xlsx, .xls"
+              accept=".csv,.txt"
               onChange={handleFileChange}
               style={{ display: 'none' }}
             />
-            <Upload size={32} color={file ? '#16a34a' : '#64748b'} style={{ margin: '0 auto 8px auto' }} />
             {file ? (
-              <div>
-                <p style={{ margin: 0, fontWeight: 700, color: '#15803d' }}>{file.name}</p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#166534' }}>
-                  {(file.size / 1024).toFixed(1)} KB — {parsedStudents.length} record(s) parsed
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: 'var(--success-glow)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <FileCheck2 size={22} color="var(--success)" />
+                </div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--success)' }}>
+                  {file.name}
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+                  {(file.size / 1024).toFixed(1)} KB — Click to change file
                 </p>
               </div>
             ) : (
-              <div>
-                <p style={{ margin: 0, fontWeight: 600, color: '#334155' }}>
-                  Click to select or drag & drop a file here
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: isDragging ? 'var(--primary-glow)' : '#f1f5f9',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}>
+                  <Upload size={22} color={isDragging ? 'var(--primary)' : 'var(--text-muted)'} />
+                </div>
+                <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: isDragging ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                  {isDragging ? 'Drop your file here' : 'Click to browse or drag & drop'}
                 </p>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                  CSV, XLSX, XLS, TXT (Max size 5MB)
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+                  CSV or TXT files only · Max 5 MB
                 </p>
               </div>
             )}
           </div>
 
-          {/* Parsing Error Warning */}
+          {/* Error banner */}
           {parsingError && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
-              <AlertCircle size={16} />
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+              background: 'var(--danger-glow)',
+              border: '1px solid rgba(239,68,68,0.2)',
+              color: '#b91c1c',
+              padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+              fontSize: 13, lineHeight: 1.5,
+            }}>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
               <span>{parsingError}</span>
             </div>
           )}
 
-          {/* Preview Table */}
+          {/* Preview table */}
           {parsedStudents.length > 0 && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                  Preview Ready Records ({parsedStudents.length}):
-                </span>
-                <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
-                  ✓ All fields mapped successfully
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Preview — {parsedStudents.length} record{parsedStudents.length !== 1 ? 's' : ''} ready to import
+                </p>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, color: 'var(--success)',
+                  background: 'var(--success-glow)',
+                  padding: '2px 10px', borderRadius: 20,
+                  border: '1px solid rgba(16,185,129,0.2)'
+                }}>
+                  ✓ Parsed
                 </span>
               </div>
-              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead style={{ background: '#f1f5f9', position: 'sticky', top: 0 }}>
-                    <tr>
-                      <th style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}>Student Name</th>
-                      <th style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}>Student ID</th>
-                      <th style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}>Route</th>
-                      <th style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}>Bus</th>
-                      <th style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}>Parent Contact</th>
+              <div style={{
+                maxHeight: 170, overflowY: 'auto',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+              }}>
+                <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-input)', position: 'sticky', top: 0 }}>
+                      {['#', 'Student Name', 'Student ID', 'Route', 'Bus', 'Parent Contact'].map((h) => (
+                        <th key={h} style={{
+                          padding: '8px 10px', fontWeight: 600,
+                          color: 'var(--text-secondary)', fontSize: 11,
+                          borderBottom: '1px solid var(--border-color)',
+                          whiteSpace: 'nowrap',
+                        }}>{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {parsedStudents.slice(0, 10).map((s, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '6px 10px', fontWeight: 600 }}>{s.studentName}</td>
-                        <td style={{ padding: '6px 10px', fontFamily: 'monospace' }}>{s.studentId}</td>
-                        <td style={{ padding: '6px 10px', color: '#2563eb' }}>{s.route}</td>
-                        <td style={{ padding: '6px 10px' }}>{s.bus}</td>
-                        <td style={{ padding: '6px 10px' }}>{s.parentContact}</td>
+                    {parsedStudents.slice(0, 8).map((s, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '6px 10px', color: 'var(--text-muted)', fontSize: 11 }}>{i + 1}</td>
+                        <td style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.studentName}</td>
+                        <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{s.studentId}</td>
+                        <td style={{ padding: '6px 10px', color: 'var(--primary)', fontWeight: 500 }}>{s.route}</td>
+                        <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{s.bus}</td>
+                        <td style={{ padding: '6px 10px', color: 'var(--text-secondary)' }}>{s.parentContact}</td>
                       </tr>
                     ))}
+                    {parsedStudents.length > 8 && (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '7px 10px', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          + {parsedStudents.length - 8} more rows not shown
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
-                {parsedStudents.length > 10 && (
-                  <p style={{ textAlign: 'center', margin: '6px 0', fontSize: '11px', color: '#64748b' }}>
-                    + {parsedStudents.length - 10} more rows...
-                  </p>
-                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Modal Actions Footer */}
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+        {/* ── Footer ─────────────────────────────────────── */}
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+          gap: 10, padding: '16px 24px',
+          borderTop: '1px solid var(--border-color)',
+        }}>
           <button
             type="button"
-            className="btn-secondary"
-            onClick={handleResetAndClose}
+            className="btn-cancel"
+            onClick={handleClose}
             disabled={isImporting}
-            style={{ padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="btn-primary"
-            onClick={handleImportSubmit}
+            className="btn-submit"
+            onClick={handleImport}
             disabled={parsedStudents.length === 0 || isImporting}
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 20px',
-              borderRadius: '6px',
-              background: '#2563eb',
-              color: '#ffffff',
-              fontWeight: 600,
-              border: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              opacity: parsedStudents.length === 0 || isImporting ? 0.55 : 1,
               cursor: parsedStudents.length === 0 || isImporting ? 'not-allowed' : 'pointer',
-              opacity: parsedStudents.length === 0 || isImporting ? 0.6 : 1
             }}
           >
-            <Check size={16} />
-            {isImporting ? 'Importing...' : `Import ${parsedStudents.length} Students`}
+            {isImporting ? (
+              <>
+                <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                Importing…
+              </>
+            ) : (
+              <>
+                <Check size={15} />
+                {parsedStudents.length > 0
+                  ? `Import ${parsedStudents.length} Student${parsedStudents.length !== 1 ? 's' : ''}`
+                  : 'Select a file first'}
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 };
