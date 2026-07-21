@@ -23619,6 +23619,19 @@ export const dbService = {
   saveRoutes: (routes: Route[]) => writeTable<Route>('transport_routes', routes),
   getStudents: (): Student[] => readTable<Student>('transport_students'),
   saveStudents: (students: Student[]) => writeTable<Student>('transport_students', students),
+  saveBulkStudents: (newStudents: Student[]): Student[] => {
+    const existing = readTable<Student>('transport_students');
+    newStudents.forEach((ns) => {
+      const idx = existing.findIndex((s) => s.studentId === ns.studentId);
+      if (idx !== -1) {
+        existing[idx] = { ...existing[idx], ...ns };
+      } else {
+        existing.push(ns);
+      }
+    });
+    writeTable<Student>('transport_students', existing);
+    return existing;
+  },
   getNotifications: (): Notification[] => readTable<Notification>('transport_notifications'),
   saveNotifications: (notifications: Notification[]) => writeTable<Notification>('transport_notifications', notifications),
   getAttendance: (): Attendance[] => {

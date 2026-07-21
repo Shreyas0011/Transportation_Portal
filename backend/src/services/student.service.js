@@ -21,5 +21,11 @@ export const StudentService = {
   },
   deallocateStudent: async (studentId) => {
     return StudentRepository.updateByStudentId(studentId, { route: 'None', bus: 'None', pickupStop: 'None', dropStop: 'None' });
+  },
+  bulkCreateStudents: async (students) => {
+    if (!Array.isArray(students) || students.length === 0) {
+      throw new Error('Invalid or empty student records array');
+    }
+    return StudentRepository.bulkUpsert(students);
   }
 };

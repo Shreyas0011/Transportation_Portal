@@ -9,5 +9,6 @@ router.post('/', validateCreateStudent, StudentController.createStudent);
 router.put('/', StudentController.updateStudent);
 router.post('/allocate', StudentController.allocateStudent);
 router.post('/deallocate', StudentController.deallocateStudent);
+router.post('/bulk', StudentController.bulkCreateStudents);
 
 export default router;

@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Trash2, Shield, RefreshCw, ShieldAlert, PieChart, X, BarChart3, ClipboardList, UserCheck,
-  Bus, Users
+  Bus, Users, Upload
 } from 'lucide-react';
 import { transportApi } from '../../api/transportApi';
 import { useToast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { BulkStudentUploadModal } from '../../components/BulkStudentUploadModal';
 import type { User, Vehicle, Route, Student, Attendance, FastagLog, SafetyAlert } from '../../utils/db';
 
 interface SuperAdminDashboardProps {
@@ -50,6 +51,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
     open: false,
     mode: 'add'
   });
+  const [isBulkStudentModalOpen, setIsBulkStudentModalOpen] = useState(false);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -732,6 +734,13 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
               <Plus size={16} />
               <span>Add Student</span>
             </button>
+            <button
+              onClick={() => setIsBulkStudentModalOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', height: '38px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#1e293b', fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}
+            >
+              <Upload size={15} />
+              <span>Upload CSV / Excel</span>
+            </button>
           </div>
 
           <div className="table-container">
@@ -1052,6 +1061,16 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
           </div>
         </div>
       )}
+
+      {/* ── Bulk Student Upload Modal ─────────────────────── */}
+      <BulkStudentUploadModal
+        isOpen={isBulkStudentModalOpen}
+        onClose={() => setIsBulkStudentModalOpen(false)}
+        onSuccess={(count) => {
+          toast.success(`${count} student(s) imported successfully!`);
+          fetchAdminData();
+        }}
+      />
     </div>
   );
 };

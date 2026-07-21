@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Bus, Users, ClipboardList, UserCheck, Search, Plus, 
-  Edit, Trash2, AlertCircle, RefreshCw, X, MapPin, Shield
+  Edit, Trash2, AlertCircle, RefreshCw, X, MapPin, Shield, Upload
 } from 'lucide-react';
 import { transportApi } from '../../api/transportApi';
 import { useToast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { BulkStudentUploadModal } from '../../components/BulkStudentUploadModal';
 import type { Vehicle, Driver, Student, Attendance, Notification, Route, Stop, FastagLog, SafetyAlert } from '../../utils/db';
 
 interface DashboardProps {
@@ -56,6 +57,7 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
     type: '',
     mode: 'add',
   });
+  const [isBulkStudentModalOpen, setIsBulkStudentModalOpen] = useState(false);
 
   // Manage Stops States
   const [stopsModal, setStopsModal] = useState<{ open: boolean; route: Route | null }>({
@@ -1660,6 +1662,14 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                 <Plus size={18} />
                 <span>Add Student</span>
               </button>
+              <button 
+                className="btn-secondary"
+                onClick={() => setIsBulkStudentModalOpen(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', height: '38px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#1e293b', fontWeight: 600 }}
+              >
+                <Upload size={16} />
+                <span>Upload CSV / Excel</span>
+              </button>
             </div>
           </div>
 
@@ -2543,6 +2553,16 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
           </div>
         </div>
       )}
+
+      {/* ── Bulk Student Upload Modal ─────────────────────────── */}
+      <BulkStudentUploadModal
+        isOpen={isBulkStudentModalOpen}
+        onClose={() => setIsBulkStudentModalOpen(false)}
+        onSuccess={(count) => {
+          toast.success(`${count} student(s) imported successfully!`);
+          fetchData();
+        }}
+      />
     </div>
   );
 };

@@ -382,6 +382,12 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
         dbService.saveStudents(students);
         return { data: students[sIndex], status: 200, statusText: 'OK', headers: {}, config };
       }
+
+      if (url.includes('/bulk') && method === 'post') {
+        const newStudents: Student[] = Array.isArray(data) ? data : [];
+        const updatedList = dbService.saveBulkStudents(newStudents);
+        return { data: updatedList, status: 201, statusText: 'Created', headers: {}, config };
+      }
     }
 
     // ── 6. ATTENDANCE ENDPOINTS ──

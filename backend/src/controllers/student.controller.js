@@ -44,5 +44,13 @@ export const StudentController = {
     } catch (error) {
       return sendError(res, error.message, null, 400);
     }
+  },
+  bulkCreateStudents: async (req, res) => {
+    try {
+      const result = await StudentService.bulkCreateStudents(req.body);
+      return sendSuccess(res, result, 'Bulk students imported successfully', 201);
+    } catch (error) {
+      return sendError(res, error.message, null, 400);
+    }
   }
 };
