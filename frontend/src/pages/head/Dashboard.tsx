@@ -8,6 +8,7 @@ import { transportApi } from '../../api/transportApi';
 import { useToast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { BulkStudentUploadModal } from '../../components/BulkStudentUploadModal';
+import { AdminNotifications } from '../admin/AdminNotifications';
 import type { Vehicle, Driver, Student, Attendance, Notification, Route, Stop, FastagLog, SafetyAlert } from '../../utils/db';
 
 interface DashboardProps {
@@ -2375,13 +2376,16 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
       {/* ── ANNOUNCEMENTS / NOTIFICATIONS TAB ── */}
       {activeTab === 'notifications' && (
         <>
-          <div className="search-filter-container" style={{ justifyContent: 'flex-end' }}>
+          {/* FCM Push Notification Panel */}
+          <AdminNotifications />
+
+          <div className="search-filter-container" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
             <button
               className="btn-add"
               onClick={() => setModalOpen({ open: true, type: 'announcement', mode: 'add' })}
             >
               <Plus size={18} />
-              <span>Broadcast Announcement</span>
+              <span>Broadcast In-App Announcement</span>
             </button>
           </div>
 

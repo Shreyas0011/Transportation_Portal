@@ -8,6 +8,7 @@ import { transportApi } from '../../api/transportApi';
 import { useToast } from '../../components/Toast';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { BulkStudentUploadModal } from '../../components/BulkStudentUploadModal';
+import { AdminNotifications } from '../admin/AdminNotifications';
 import type { User, Vehicle, Route, Student, Attendance, FastagLog, SafetyAlert } from '../../utils/db';
 
 interface SuperAdminDashboardProps {
@@ -1060,6 +1061,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── NOTIFICATIONS / FCM PUSH TAB (Super Admin) ── */}
+      {activeTab === 'notifications' && (
+        <AdminNotifications />
       )}
 
       {/* ── Bulk Student Upload Modal ─────────────────────── */}

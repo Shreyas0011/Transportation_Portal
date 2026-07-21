@@ -7,7 +7,8 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   employeeId: { type: String },
   studentId: { type: String },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  fcmTokens: [{ type: String }]
 }, { timestamps: true });
 
 export const User = mongoose.model('User', UserSchema);

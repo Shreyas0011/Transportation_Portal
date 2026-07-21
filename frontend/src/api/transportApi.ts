@@ -103,14 +103,36 @@ export const transportApi = {
     return response.data;
   },
 
-  // Notifications
+  // Notifications & FCM Push
   getNotifications: async () => {
     const response = await axiosInstance.get('/notifications');
-    return response.data as Notification[];
+    const data = response.data;
+    return (data.data || data) as Notification[];
+  },
+  getNotificationHistory: async () => {
+    const response = await axiosInstance.get('/notifications/history');
+    const data = response.data;
+    return (data.data || data) as any[];
   },
   addNotification: async (notification: Omit<Notification, 'id' | 'date'>) => {
     const response = await axiosInstance.post('/notifications', notification);
     return response.data as Notification;
+  },
+  registerFcmToken: async (fcmToken: string) => {
+    const response = await axiosInstance.post('/notifications/token', { fcmToken });
+    return response.data;
+  },
+  sendNotification: async (payload: { title: string; body: string; recipientType?: string; recipientId?: string; routeId?: string; busId?: string; priority?: string; type?: string }) => {
+    const response = await axiosInstance.post('/notifications/send', payload);
+    return response.data;
+  },
+  sendBroadcastNotification: async (payload: { title: string; body: string; priority?: string; type?: string }) => {
+    const response = await axiosInstance.post('/notifications/broadcast', payload);
+    return response.data;
+  },
+  markNotificationAsRead: async (id: string) => {
+    const response = await axiosInstance.patch(`/notifications/${encodeURIComponent(id)}/read`);
+    return response.data;
   },
 
   // Users (Super Admin)

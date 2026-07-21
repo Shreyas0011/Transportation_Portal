@@ -570,6 +570,45 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
       }
     }
 
+    // ── 9. NOTIFICATIONS ENDPOINTS ──
+    if (url.includes('/notifications')) {
+      const existing = dbService.getNotifications();
+
+      if (url.endsWith('/token') && method === 'post') {
+        return { data: { success: true, message: 'FCM token registered' }, status: 200, statusText: 'OK', headers: {}, config };
+      }
+
+      if ((url.endsWith('/history') || url.endsWith('/notifications')) && method === 'get') {
+        return { data: { success: true, data: existing }, status: 200, statusText: 'OK', headers: {}, config };
+      }
+
+      if ((url.endsWith('/send') || url.endsWith('/broadcast')) && method === 'post') {
+        const newNotif = {
+          id: `NOTIF-${Date.now()}`,
+          title: data.title,
+          body: data.body,
+          message: data.body,
+          type: data.type || 'General',
+          priority: data.priority || 'Normal',
+          recipientType: data.recipientType || 'All',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+          date: new Date().toISOString()
+        };
+        const updated: any[] = [newNotif, ...(existing as any[])];
+        dbService.saveNotifications(updated);
+        return { data: { success: true, data: newNotif }, status: 200, statusText: 'OK', headers: {}, config };
+      }
+
+      if (url.includes('/read') && (method === 'patch' || method === 'put')) {
+        const parts = url.split('/');
+        const id = parts[parts.length - 2] || parts[parts.length - 1];
+        const updated = existing.map((n: any) => (n.id === id ? { ...n, isRead: true } : n));
+        dbService.saveNotifications(updated);
+        return { data: { success: true, message: 'Marked as read' }, status: 200, statusText: 'OK', headers: {}, config };
+      }
+    }
+
     throw new Error(`Endpoint not matched: ${url} (${method})`);
   } catch (error: any) {
     return Promise.reject({

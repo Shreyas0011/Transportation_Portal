@@ -8,6 +8,8 @@ import { ParentDashboard } from './pages/parent/Dashboard';
 import { DriverDashboard } from './pages/driver/Dashboard';
 import { SuperAdminDashboard } from './pages/superadmin/Dashboard';
 import { initLocalStorageDB, dbService } from './utils/db';
+import { NotificationProvider } from './context/NotificationContext';
+import { NotificationBell } from './components/NotificationBell';
 
 // ── Zustand stores ──────────────────────────────────────────
 import { useAuthStore, useAppStore } from './store';
@@ -102,22 +104,32 @@ const AppContent: React.FC = () => {
 
   // ── Header copy helpers ───────────────────────────────────
   const getHeaderTitle = () => {
-    switch (user?.role) {
-      case 'Transport Head': return 'Fleet Operator Control Center';
-      case 'Parent':         return 'Parent Transport Console';
-      case 'Driver':         return 'Driver Duty Console';
-      case 'Super Admin':    return 'System Database & Root Control';
-      default:               return 'Institutional Transport Portal';
+    switch (activeTab) {
+      case 'overview': return 'Transport Overview';
+      case 'vehicles': return 'Fleet Vehicle Management';
+      case 'routes': return 'Route & Bus Stops';
+      case 'drivers': return 'Driver Directory';
+      case 'students': return 'Student Bus Allocation';
+      case 'attendance': return 'Daily Attendance Board';
+      case 'telematics': return 'Fleet Telematics & Security';
+      case 'notifications': return 'FCM Push & Announcements';
+      case 'child-info': return 'Student Transport Details';
+      case 'today-attendance': return 'Daily Attendance Declaration';
+      case 'child-attendance': return 'Attendance Logs';
+      case 'my-schedule': return 'Daily Driver Route Summary';
+      case 'student-list': return 'Student Passengers';
+      case 'users': return 'System User & Role Control';
+      case 'analytics': return 'Transport Analytics';
+      case 'database': return 'Database Control';
+      default: return 'Dashboard';
     }
   };
 
   const getHeaderSubtitle = () => {
-    switch (user?.role) {
-      case 'Transport Head': return 'Manage institutional buses, routes, drivers, stops, and student allocations.';
-      case 'Parent':         return 'Monitor child bus schedules, passenger timings, and alerts.';
-      case 'Driver':         return 'View assigned schedules, passenger sheets, and route sequences.';
-      case 'Super Admin':    return 'Configure staff/parent users, analyze route utilization, and storage controls.';
-      default:               return '';
+    switch (activeTab) {
+      case 'overview': return 'Real-time overview of fleet operations and alerts';
+      case 'notifications': return 'Send and manage FCM push alerts & announcements';
+      default: return `Logged in as ${user?.name || ''} (${user?.role || ''})`;
     }
   };
 
@@ -166,6 +178,7 @@ const AppContent: React.FC = () => {
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>
               Academic Session 2026-27
             </span>
+            <NotificationBell />
           </div>
         </header>
 
@@ -175,10 +188,12 @@ const AppContent: React.FC = () => {
   );
 };
 
-// ── Root (provides Toast context) ─────────────────────────────
+// ── Root (provides Toast & Notification contexts) ─────────────
 const App: React.FC = () => (
   <ToastProvider>
-    <AppContent />
+    <NotificationProvider>
+      <AppContent />
+    </NotificationProvider>
   </ToastProvider>
 );
 

@@ -4,6 +4,10 @@
 backend/.env
 frontend/.env
 
+# Firebase Admin Service Account Key
+serviceAccountKey.json
+**/serviceAccountKey.json
+
 # Logs
 logs
 *.log

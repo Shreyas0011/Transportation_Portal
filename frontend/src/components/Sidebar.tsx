@@ -58,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'students', label: 'Student Directory', icon: <ClipboardList size={18} /> },
           { id: 'attendance', label: 'Attendance Overview', icon: <UserCheck size={18} /> },
           { id: 'analytics', label: 'Analytics dashboard', icon: <Home size={18} /> },
+          { id: 'notifications', label: 'Push Notifications', icon: <Bell size={18} /> },
           { id: 'database', label: 'System Control', icon: <Settings size={18} /> },
         ];
       default:
