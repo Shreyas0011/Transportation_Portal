@@ -451,7 +451,7 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
 
       if (method === 'get') {
         // Strip passwords before returning
-        const safeUsers = users.map(({ password, ...u }) => u);
+        const safeUsers = users.map(({ password: _password, ...u }) => u);
         return { data: safeUsers, status: 200, statusText: 'OK', headers: {}, config };
       }
 
@@ -486,7 +486,7 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
           }
         }
 
-        const { password, ...safeUser } = newUser;
+        const { password: _password, ...safeUser } = newUser;
         return { data: safeUser, status: 201, statusText: 'Created', headers: {}, config };
       }
 
@@ -498,7 +498,7 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
 
         users[index].isActive = data.isActive;
         dbService.saveUsers(users);
-        const { password, ...safeUser } = users[index];
+        const { password: _password, ...safeUser } = users[index];
         return { data: safeUser, status: 200, statusText: 'OK', headers: {}, config };
       }
 

@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "description": "Institutional Transportation Portal with Frontend and Backend separation",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev": "npm run dev --prefix frontend",
-    "build": "npm run build --prefix frontend",
+    "build": "cd frontend && npm install && npm run build",
     "lint": "npm run lint --prefix frontend"
   },
   "keywords": [],
