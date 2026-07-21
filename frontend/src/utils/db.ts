@@ -59,6 +59,7 @@ export interface Attendance {
   accountabilityStatus?: 'Pending' | 'Warned' | 'Resolved';
   accountabilityNote?: string;
   updatedBy?: string;
+  dropOffTime?: string;
 }
 
 export interface Notification {
@@ -98,7 +99,7 @@ export interface User {
   isActive: boolean;
 }
 
-const DB_VERSION = 'v2.1';
+const DB_VERSION = 'v3.0';
 
 const DEFAULT_USERS: User[] = [
   {
@@ -8320,846 +8321,34 @@ const DEFAULT_USERS: User[] = [
 ];
 
 const DEFAULT_DRIVERS: Driver[] = [
-  {
-    "name": "Manjunath Gowda",
-    "employeeId": "EMP-DRV-001",
-    "phone": "+91 98450 12345",
-    "assignedVehicle": "KA-53-F-1234",
-    "assignedRoute": "Route 1",
-    "status": "Active"
-  },
-  {
-    "name": "Vihaan Gowda",
-    "employeeId": "EMP-DRV-002",
-    "phone": "+91 99000 00002",
-    "assignedVehicle": "KA-01-XX-0020",
-    "assignedRoute": "Route 1",
-    "status": "Active"
-  },
-  {
-    "name": "Aditya Gowda",
-    "employeeId": "EMP-DRV-003",
-    "phone": "+91 99000 00003",
-    "assignedVehicle": "KA-01-XX-0000",
-    "assignedRoute": "Route 1",
-    "status": "Active"
-  },
-  {
-    "name": "Manjunath Gowda",
-    "employeeId": "EMP-DRV-004",
-    "phone": "+91 99000 00004",
-    "assignedVehicle": "KA-02-XX-0002",
-    "assignedRoute": "Route 2",
-    "status": "Active"
-  },
-  {
-    "name": "Satish Kumar",
-    "employeeId": "EMP-DRV-005",
-    "phone": "+91 98450 67890",
-    "assignedVehicle": "KA-03-M-5678",
-    "assignedRoute": "Route 2",
-    "status": "Active"
-  },
-  {
-    "name": "Ramesh Gowda",
-    "employeeId": "EMP-DRV-006",
-    "phone": "+91 99000 00006",
-    "assignedVehicle": "KA-02-XX-0011",
-    "assignedRoute": "Route 2",
-    "status": "Active"
-  },
-  {
-    "name": "Sandeep Gowda",
-    "employeeId": "EMP-DRV-007",
-    "phone": "+91 99000 00007",
-    "assignedVehicle": "KA-02-XX-0000",
-    "assignedRoute": "Route 2",
-    "status": "Active"
-  },
-  {
-    "name": "Ramesh Naik",
-    "employeeId": "EMP-DRV-008",
-    "phone": "+91 97412 34567",
-    "assignedVehicle": "KA-51-AB-9999",
-    "assignedRoute": "Route 3",
-    "status": "Active"
-  },
-  {
-    "name": "Manoj Gowda",
-    "employeeId": "EMP-DRV-009",
-    "phone": "+91 99000 00009",
-    "assignedVehicle": "KA-03-XX-0016",
-    "assignedRoute": "Route 3",
-    "status": "Active"
-  },
-  {
-    "name": "Arun Gowda",
-    "employeeId": "EMP-DRV-010",
-    "phone": "+91 99000 00010",
-    "assignedVehicle": "KA-03-XX-0018",
-    "assignedRoute": "Route 3",
-    "status": "Active"
-  },
-  {
-    "name": "Ajay Gowda",
-    "employeeId": "EMP-DRV-011",
-    "phone": "+91 99000 00011",
-    "assignedVehicle": "KA-03-XX-0000",
-    "assignedRoute": "Route 3",
-    "status": "Active"
-  },
-  {
-    "name": "Vikram Gowda",
-    "employeeId": "EMP-DRV-012",
-    "phone": "+91 99000 00012",
-    "assignedVehicle": "KA-04-XX-0002",
-    "assignedRoute": "Route 4",
-    "status": "Active"
-  },
-  {
-    "name": "Deepak Gowda",
-    "employeeId": "EMP-DRV-013",
-    "phone": "+91 99000 00013",
-    "assignedVehicle": "KA-04-XX-0009",
-    "assignedRoute": "Route 4",
-    "status": "Active"
-  },
-  {
-    "name": "Rajesh Gowda",
-    "employeeId": "EMP-DRV-014",
-    "phone": "+91 99000 00014",
-    "assignedVehicle": "KA-04-XX-0011",
-    "assignedRoute": "Route 4",
-    "status": "Active"
-  },
-  {
-    "name": "Bhaskar Gowda",
-    "employeeId": "EMP-DRV-015",
-    "phone": "+91 99000 00015",
-    "assignedVehicle": "KA-04-XX-0023",
-    "assignedRoute": "Route 4",
-    "status": "Active"
-  },
-  {
-    "name": "Narayana Gowda",
-    "employeeId": "EMP-DRV-016",
-    "phone": "+91 99000 00016",
-    "assignedVehicle": "KA-04-XX-0000",
-    "assignedRoute": "Route 4",
-    "status": "Active"
-  },
-  {
-    "name": "Suresh Gowda",
-    "employeeId": "EMP-DRV-017",
-    "phone": "+91 99000 00017",
-    "assignedVehicle": "KA-05-AB-0005",
-    "assignedRoute": "Route 5",
-    "status": "Active"
-  },
-  {
-    "name": "Amit Gowda",
-    "employeeId": "EMP-DRV-018",
-    "phone": "+91 99000 00018",
-    "assignedVehicle": "KA-05-AB-0009",
-    "assignedRoute": "Route 5",
-    "status": "Active"
-  },
-  {
-    "name": "Karan Gowda",
-    "employeeId": "EMP-DRV-019",
-    "phone": "+91 99000 00019",
-    "assignedVehicle": "KA-05-AB-0010",
-    "assignedRoute": "Route 5",
-    "status": "Active"
-  },
-  {
-    "name": "Devendra Gowda",
-    "employeeId": "EMP-DRV-020",
-    "phone": "+91 99000 00020",
-    "assignedVehicle": "KA-05-AB-0000",
-    "assignedRoute": "Route 5",
-    "status": "Active"
-  },
-  {
-    "name": "Prasad Gowda",
-    "employeeId": "EMP-DRV-021",
-    "phone": "+91 99000 00021",
-    "assignedVehicle": "KA-06-CD-0002",
-    "assignedRoute": "Route 6",
-    "status": "Active"
-  },
-  {
-    "name": "Harish Gowda",
-    "employeeId": "EMP-DRV-022",
-    "phone": "+91 99000 00022",
-    "assignedVehicle": "KA-06-CD-0007",
-    "assignedRoute": "Route 6",
-    "status": "Active"
-  },
-  {
-    "name": "Gopal Gowda",
-    "employeeId": "EMP-DRV-023",
-    "phone": "+91 99000 00023",
-    "assignedVehicle": "KA-06-CD-0009",
-    "assignedRoute": "Route 6",
-    "status": "Active"
-  },
-  {
-    "name": "Sanjay Gowda",
-    "employeeId": "EMP-DRV-024",
-    "phone": "+91 99000 00024",
-    "assignedVehicle": "KA-06-CD-0012",
-    "assignedRoute": "Route 6",
-    "status": "Active"
-  },
-  {
-    "name": "Anil Gowda",
-    "employeeId": "EMP-DRV-025",
-    "phone": "+91 99000 00025",
-    "assignedVehicle": "KA-06-CD-0022",
-    "assignedRoute": "Route 6",
-    "status": "Active"
-  },
-  {
-    "name": "Sunil Gowda",
-    "employeeId": "EMP-DRV-026",
-    "phone": "+91 99000 00026",
-    "assignedVehicle": "KA-06-CD-0000",
-    "assignedRoute": "Route 6",
-    "status": "Active"
-  },
-  {
-    "name": "Vijay Gowda",
-    "employeeId": "EMP-DRV-027",
-    "phone": "+91 99000 00027",
-    "assignedVehicle": "KA-07-EF-0007",
-    "assignedRoute": "Route 7",
-    "status": "Active"
-  },
-  {
-    "name": "Ashok Gowda",
-    "employeeId": "EMP-DRV-028",
-    "phone": "+91 99000 00028",
-    "assignedVehicle": "KA-07-EF-0008",
-    "assignedRoute": "Route 7",
-    "status": "Active"
-  },
-  {
-    "name": "Kishore Gowda",
-    "employeeId": "EMP-DRV-029",
-    "phone": "+91 99000 00029",
-    "assignedVehicle": "KA-07-EF-0012",
-    "assignedRoute": "Route 7",
-    "status": "Active"
-  },
-  {
-    "name": "Prathap Gowda",
-    "employeeId": "EMP-DRV-030",
-    "phone": "+91 99000 00030",
-    "assignedVehicle": "KA-07-EF-0013",
-    "assignedRoute": "Route 7",
-    "status": "Active"
-  },
-  {
-    "name": "Mohan Gowda",
-    "employeeId": "EMP-DRV-031",
-    "phone": "+91 99000 00031",
-    "assignedVehicle": "KA-07-EF-0016",
-    "assignedRoute": "Route 7",
-    "status": "Active"
-  },
-  {
-    "name": "Shivakumar Gowda",
-    "employeeId": "EMP-DRV-032",
-    "phone": "+91 99000 00032",
-    "assignedVehicle": "KA-07-EF-0000",
-    "assignedRoute": "Route 7",
-    "status": "Active"
-  },
-  {
-    "name": "Nandish Gowda",
-    "employeeId": "EMP-DRV-033",
-    "phone": "+91 99000 00033",
-    "assignedVehicle": "KA-08-GH-0008",
-    "assignedRoute": "Route 8",
-    "status": "Active"
-  },
-  {
-    "name": "Kiran Gowda",
-    "employeeId": "EMP-DRV-034",
-    "phone": "+91 99000 00034",
-    "assignedVehicle": "KA-08-GH-0009",
-    "assignedRoute": "Route 8",
-    "status": "Active"
-  },
-  {
-    "name": "Sudhakar Gowda",
-    "employeeId": "EMP-DRV-035",
-    "phone": "+91 99000 00035",
-    "assignedVehicle": "KA-08-GH-0013",
-    "assignedRoute": "Route 8",
-    "status": "Active"
-  },
-  {
-    "name": "Rajendra Gowda",
-    "employeeId": "EMP-DRV-036",
-    "phone": "+91 99000 00036",
-    "assignedVehicle": "KA-08-GH-0000",
-    "assignedRoute": "Route 8",
-    "status": "Active"
-  },
-  {
-    "name": "Jagadish Gowda",
-    "employeeId": "EMP-DRV-037",
-    "phone": "+91 99000 00037",
-    "assignedVehicle": "KA-09-IJ-0002",
-    "assignedRoute": "Route 9",
-    "status": "Active"
-  },
-  {
-    "name": "Ananth Gowda",
-    "employeeId": "EMP-DRV-038",
-    "phone": "+91 99000 00038",
-    "assignedVehicle": "KA-09-IJ-0000",
-    "assignedRoute": "Route 9",
-    "status": "Active"
-  },
-  {
-    "name": "Ganesh Gowda",
-    "employeeId": "EMP-DRV-039",
-    "phone": "+91 99000 00039",
-    "assignedVehicle": "KA-10-KL-0010",
-    "assignedRoute": "Route 10",
-    "status": "Active"
-  },
-  {
-    "name": "Aarav Kumar",
-    "employeeId": "EMP-DRV-040",
-    "phone": "+91 99000 00040",
-    "assignedVehicle": "KA-10-KL-0000",
-    "assignedRoute": "Route 10",
-    "status": "Active"
-  },
-  {
-    "name": "Vihaan Kumar",
-    "employeeId": "EMP-DRV-041",
-    "phone": "+91 99000 00041",
-    "assignedVehicle": "KA-11-MN-0004",
-    "assignedRoute": "Route 11",
-    "status": "Active"
-  },
-  {
-    "name": "Aditya Kumar",
-    "employeeId": "EMP-DRV-042",
-    "phone": "+91 99000 00042",
-    "assignedVehicle": "KA-11-MN-0000",
-    "assignedRoute": "Route 11",
-    "status": "Active"
-  },
-  {
-    "name": "Manjunath Kumar",
-    "employeeId": "EMP-DRV-043",
-    "phone": "+91 99000 00043",
-    "assignedVehicle": "KA-12-OP-0010",
-    "assignedRoute": "Route 12",
-    "status": "Active"
-  },
-  {
-    "name": "Satish Kumar",
-    "employeeId": "EMP-DRV-044",
-    "phone": "+91 99000 00044",
-    "assignedVehicle": "KA-12-OP-0012",
-    "assignedRoute": "Route 12",
-    "status": "Active"
-  },
-  {
-    "name": "Ramesh Kumar",
-    "employeeId": "EMP-DRV-045",
-    "phone": "+91 99000 00045",
-    "assignedVehicle": "KA-12-OP-0015",
-    "assignedRoute": "Route 12",
-    "status": "Active"
-  },
-  {
-    "name": "Sandeep Kumar",
-    "employeeId": "EMP-DRV-046",
-    "phone": "+91 99000 00046",
-    "assignedVehicle": "KA-12-OP-0023",
-    "assignedRoute": "Route 12",
-    "status": "Active"
-  },
-  {
-    "name": "Alok Kumar",
-    "employeeId": "EMP-DRV-047",
-    "phone": "+91 99000 00047",
-    "assignedVehicle": "KA-12-OP-0000",
-    "assignedRoute": "Route 12",
-    "status": "Active"
-  },
-  {
-    "name": "Manoj Kumar",
-    "employeeId": "EMP-DRV-048",
-    "phone": "+91 99000 00048",
-    "assignedVehicle": "KA-13-QR-0001",
-    "assignedRoute": "Route 13",
-    "status": "Active"
-  },
-  {
-    "name": "Arun Kumar",
-    "employeeId": "EMP-DRV-049",
-    "phone": "+91 99000 00049",
-    "assignedVehicle": "KA-13-QR-0005",
-    "assignedRoute": "Route 13",
-    "status": "Active"
-  },
-  {
-    "name": "Ajay Kumar",
-    "employeeId": "EMP-DRV-050",
-    "phone": "+91 99000 00050",
-    "assignedVehicle": "KA-13-QR-0013",
-    "assignedRoute": "Route 13",
-    "status": "Active"
-  },
-  {
-    "name": "Vikram Kumar",
-    "employeeId": "EMP-DRV-051",
-    "phone": "+91 99000 00051",
-    "assignedVehicle": "KA-13-QR-0000",
-    "assignedRoute": "Route 13",
-    "status": "Active"
-  },
-  {
-    "name": "Deepak Kumar",
-    "employeeId": "EMP-DRV-052",
-    "phone": "+91 99000 00052",
-    "assignedVehicle": "KA-14-ST-0014",
-    "assignedRoute": "Route 14",
-    "status": "Active"
-  },
-  {
-    "name": "Rajesh Kumar",
-    "employeeId": "EMP-DRV-053",
-    "phone": "+91 99000 00053",
-    "assignedVehicle": "KA-14-ST-0000",
-    "assignedRoute": "Route 14",
-    "status": "Active"
-  },
-  {
-    "name": "Bhaskar Kumar",
-    "employeeId": "EMP-DRV-054",
-    "phone": "+91 99000 00054",
-    "assignedVehicle": "KA-15-UV-0012",
-    "assignedRoute": "Route 15",
-    "status": "Active"
-  },
-  {
-    "name": "Narayana Kumar",
-    "employeeId": "EMP-DRV-055",
-    "phone": "+91 99000 00055",
-    "assignedVehicle": "KA-15-UV-0015",
-    "assignedRoute": "Route 15",
-    "status": "Active"
-  },
-  {
-    "name": "Suresh Kumar",
-    "employeeId": "EMP-DRV-056",
-    "phone": "+91 99000 00056",
-    "assignedVehicle": "KA-15-UV-0000",
-    "assignedRoute": "Route 15",
-    "status": "Active"
-  },
-  {
-    "name": "Amit Kumar",
-    "employeeId": "EMP-DRV-057",
-    "phone": "+91 99000 00057",
-    "assignedVehicle": "KA-16-WX-0016",
-    "assignedRoute": "Route 16",
-    "status": "Active"
-  },
-  {
-    "name": "Karan Kumar",
-    "employeeId": "EMP-DRV-058",
-    "phone": "+91 99000 00058",
-    "assignedVehicle": "KA-16-WX-0017",
-    "assignedRoute": "Route 16",
-    "status": "Active"
-  },
-  {
-    "name": "Devendra Kumar",
-    "employeeId": "EMP-DRV-059",
-    "phone": "+91 99000 00059",
-    "assignedVehicle": "KA-16-WX-0020",
-    "assignedRoute": "Route 16",
-    "status": "Active"
-  },
-  {
-    "name": "Prasad Kumar",
-    "employeeId": "EMP-DRV-060",
-    "phone": "+91 99000 00060",
-    "assignedVehicle": "KA-16-WX-0000",
-    "assignedRoute": "Route 16",
-    "status": "Active"
-  },
-  {
-    "name": "Harish Kumar",
-    "employeeId": "EMP-DRV-061",
-    "phone": "+91 99000 00061",
-    "assignedVehicle": "KA-17-YZ-0006",
-    "assignedRoute": "Route 17",
-    "status": "Active"
-  },
-  {
-    "name": "Gopal Kumar",
-    "employeeId": "EMP-DRV-062",
-    "phone": "+91 99000 00062",
-    "assignedVehicle": "KA-17-YZ-0019",
-    "assignedRoute": "Route 17",
-    "status": "Active"
-  },
-  {
-    "name": "Sanjay Kumar",
-    "employeeId": "EMP-DRV-063",
-    "phone": "+91 99000 00063",
-    "assignedVehicle": "KA-17-YZ-0000",
-    "assignedRoute": "Route 17",
-    "status": "Active"
-  },
-  {
-    "name": "Anil Kumar",
-    "employeeId": "EMP-DRV-064",
-    "phone": "+91 99000 00064",
-    "assignedVehicle": "KA-18-BC-0016",
-    "assignedRoute": "Route 18",
-    "status": "Active"
-  },
-  {
-    "name": "Sunil Kumar",
-    "employeeId": "EMP-DRV-065",
-    "phone": "+91 99000 00065",
-    "assignedVehicle": "KA-18-BC-0018",
-    "assignedRoute": "Route 18",
-    "status": "Active"
-  },
-  {
-    "name": "Vijay Kumar",
-    "employeeId": "EMP-DRV-066",
-    "phone": "+91 99000 00066",
-    "assignedVehicle": "KA-18-BC-0000",
-    "assignedRoute": "Route 18",
-    "status": "Active"
-  },
-  {
-    "name": "Ashok Kumar",
-    "employeeId": "EMP-DRV-067",
-    "phone": "+91 99000 00067",
-    "assignedVehicle": "KA-19-DF-0003",
-    "assignedRoute": "Route 19",
-    "status": "Active"
-  },
-  {
-    "name": "Kishore Kumar",
-    "employeeId": "EMP-DRV-068",
-    "phone": "+91 99000 00068",
-    "assignedVehicle": "KA-19-DF-0019",
-    "assignedRoute": "Route 19",
-    "status": "Active"
-  },
-  {
-    "name": "Prathap Kumar",
-    "employeeId": "EMP-DRV-069",
-    "phone": "+91 99000 00069",
-    "assignedVehicle": "KA-19-DF-0020",
-    "assignedRoute": "Route 19",
-    "status": "Active"
-  },
-  {
-    "name": "Mohan Kumar",
-    "employeeId": "EMP-DRV-070",
-    "phone": "+91 99000 00070",
-    "assignedVehicle": "KA-19-DF-0000",
-    "assignedRoute": "Route 19",
-    "status": "Active"
-  },
-  {
-    "name": "Shivakumar Kumar",
-    "employeeId": "EMP-DRV-071",
-    "phone": "+91 99000 00071",
-    "assignedVehicle": "KA-20-FG-0018",
-    "assignedRoute": "Route 20",
-    "status": "Active"
-  },
-  {
-    "name": "Nandish Kumar",
-    "employeeId": "EMP-DRV-072",
-    "phone": "+91 99000 00072",
-    "assignedVehicle": "KA-20-FG-0020",
-    "assignedRoute": "Route 20",
-    "status": "Active"
-  },
-  {
-    "name": "Kiran Kumar",
-    "employeeId": "EMP-DRV-073",
-    "phone": "+91 99000 00073",
-    "assignedVehicle": "KA-20-FG-0024",
-    "assignedRoute": "Route 20",
-    "status": "Active"
-  },
-  {
-    "name": "Sudhakar Kumar",
-    "employeeId": "EMP-DRV-074",
-    "phone": "+91 99000 00074",
-    "assignedVehicle": "KA-20-FG-0000",
-    "assignedRoute": "Route 20",
-    "status": "Active"
-  },
-  {
-    "name": "Rajendra Kumar",
-    "employeeId": "EMP-DRV-075",
-    "phone": "+91 99000 00075",
-    "assignedVehicle": "KA-21-HJ-0001",
-    "assignedRoute": "Route 21",
-    "status": "Active"
-  },
-  {
-    "name": "Jagadish Kumar",
-    "employeeId": "EMP-DRV-076",
-    "phone": "+91 99000 00076",
-    "assignedVehicle": "KA-21-HJ-0012",
-    "assignedRoute": "Route 21",
-    "status": "Active"
-  },
-  {
-    "name": "Ananth Kumar",
-    "employeeId": "EMP-DRV-077",
-    "phone": "+91 99000 00077",
-    "assignedVehicle": "KA-21-HJ-0015",
-    "assignedRoute": "Route 21",
-    "status": "Active"
-  },
-  {
-    "name": "Ganesh Kumar",
-    "employeeId": "EMP-DRV-078",
-    "phone": "+91 99000 00078",
-    "assignedVehicle": "KA-21-HJ-0021",
-    "assignedRoute": "Route 21",
-    "status": "Active"
-  },
-  {
-    "name": "Aarav Naik",
-    "employeeId": "EMP-DRV-079",
-    "phone": "+91 99000 00079",
-    "assignedVehicle": "KA-21-HJ-0000",
-    "assignedRoute": "Route 21",
-    "status": "Active"
-  },
-  {
-    "name": "Vihaan Naik",
-    "employeeId": "EMP-DRV-080",
-    "phone": "+91 99000 00080",
-    "assignedVehicle": "KA-22-JK-0012",
-    "assignedRoute": "Route 22",
-    "status": "Active"
-  },
-  {
-    "name": "Aditya Naik",
-    "employeeId": "EMP-DRV-081",
-    "phone": "+91 99000 00081",
-    "assignedVehicle": "KA-22-JK-0022",
-    "assignedRoute": "Route 22",
-    "status": "Active"
-  },
-  {
-    "name": "Manjunath Naik",
-    "employeeId": "EMP-DRV-082",
-    "phone": "+91 99000 00082",
-    "assignedVehicle": "KA-22-JK-0000",
-    "assignedRoute": "Route 22",
-    "status": "Active"
-  },
-  {
-    "name": "Satish Naik",
-    "employeeId": "EMP-DRV-083",
-    "phone": "+91 99000 00083",
-    "assignedVehicle": "KA-23-LM-0012",
-    "assignedRoute": "Route 23",
-    "status": "Active"
-  },
-  {
-    "name": "Ramesh Naik",
-    "employeeId": "EMP-DRV-084",
-    "phone": "+91 99000 00084",
-    "assignedVehicle": "KA-23-LM-0021",
-    "assignedRoute": "Route 23",
-    "status": "Active"
-  },
-  {
-    "name": "Sandeep Naik",
-    "employeeId": "EMP-DRV-085",
-    "phone": "+91 99000 00085",
-    "assignedVehicle": "KA-23-LM-0023",
-    "assignedRoute": "Route 23",
-    "status": "Active"
-  },
-  {
-    "name": "Alok Naik",
-    "employeeId": "EMP-DRV-086",
-    "phone": "+91 99000 00086",
-    "assignedVehicle": "KA-23-LM-0000",
-    "assignedRoute": "Route 23",
-    "status": "Active"
-  },
-  {
-    "name": "Manoj Naik",
-    "employeeId": "EMP-DRV-087",
-    "phone": "+91 99000 00087",
-    "assignedVehicle": "KA-24-NP-0003",
-    "assignedRoute": "Route 24",
-    "status": "Active"
-  },
-  {
-    "name": "Arun Naik",
-    "employeeId": "EMP-DRV-088",
-    "phone": "+91 99000 00088",
-    "assignedVehicle": "KA-24-NP-0006",
-    "assignedRoute": "Route 24",
-    "status": "Active"
-  },
-  {
-    "name": "Ajay Naik",
-    "employeeId": "EMP-DRV-089",
-    "phone": "+91 99000 00089",
-    "assignedVehicle": "KA-24-NP-0020",
-    "assignedRoute": "Route 24",
-    "status": "Active"
-  },
-  {
-    "name": "Vikram Naik",
-    "employeeId": "EMP-DRV-090",
-    "phone": "+91 99000 00090",
-    "assignedVehicle": "KA-24-NP-0024",
-    "assignedRoute": "Route 24",
-    "status": "Active"
-  },
-  {
-    "name": "Deepak Naik",
-    "employeeId": "EMP-DRV-091",
-    "phone": "+91 99000 00091",
-    "assignedVehicle": "KA-24-NP-0000",
-    "assignedRoute": "Route 24",
-    "status": "Active"
-  },
-  {
-    "name": "Rajesh Naik",
-    "employeeId": "EMP-DRV-092",
-    "phone": "+91 99000 00092",
-    "assignedVehicle": "KA-25-PR-0006",
-    "assignedRoute": "Route 25",
-    "status": "Active"
-  },
-  {
-    "name": "Bhaskar Naik",
-    "employeeId": "EMP-DRV-093",
-    "phone": "+91 99000 00093",
-    "assignedVehicle": "KA-25-PR-0008",
-    "assignedRoute": "Route 25",
-    "status": "Active"
-  },
-  {
-    "name": "Narayana Naik",
-    "employeeId": "EMP-DRV-094",
-    "phone": "+91 99000 00094",
-    "assignedVehicle": "KA-25-PR-0020",
-    "assignedRoute": "Route 25",
-    "status": "Active"
-  },
-  {
-    "name": "Suresh Naik",
-    "employeeId": "EMP-DRV-095",
-    "phone": "+91 99000 00095",
-    "assignedVehicle": "KA-25-PR-0024",
-    "assignedRoute": "Route 25",
-    "status": "Active"
-  },
-  {
-    "name": "Amit Naik",
-    "employeeId": "EMP-DRV-096",
-    "phone": "+91 99000 00096",
-    "assignedVehicle": "KA-25-PR-0000",
-    "assignedRoute": "Route 25",
-    "status": "Active"
-  },
-  {
-    "name": "Karan Naik",
-    "employeeId": "EMP-DRV-097",
-    "phone": "+91 99000 00097",
-    "assignedVehicle": "KA-26-RS-0009",
-    "assignedRoute": "Route 26",
-    "status": "Active"
-  },
-  {
-    "name": "Devendra Naik",
-    "employeeId": "EMP-DRV-098",
-    "phone": "+91 99000 00098",
-    "assignedVehicle": "KA-26-RS-0012",
-    "assignedRoute": "Route 26",
-    "status": "Active"
-  },
-  {
-    "name": "Prasad Naik",
-    "employeeId": "EMP-DRV-099",
-    "phone": "+91 99000 00099",
-    "assignedVehicle": "KA-26-RS-0000",
-    "assignedRoute": "Route 26",
-    "status": "Active"
-  },
-  {
-    "name": "Harish Naik",
-    "employeeId": "EMP-DRV-100",
-    "phone": "+91 99000 00100",
-    "assignedVehicle": "KA-27-TV-0003",
-    "assignedRoute": "Route 27",
-    "status": "Active"
-  },
-  {
-    "name": "Gopal Naik",
-    "employeeId": "EMP-DRV-101",
-    "phone": "+91 99000 00101",
-    "assignedVehicle": "KA-27-TV-0016",
-    "assignedRoute": "Route 27",
-    "status": "Active"
-  },
-  {
-    "name": "Sanjay Naik",
-    "employeeId": "EMP-DRV-102",
-    "phone": "+91 99000 00102",
-    "assignedVehicle": "KA-27-TV-0017",
-    "assignedRoute": "Route 27",
-    "status": "Active"
-  },
-  {
-    "name": "Anil Naik",
-    "employeeId": "EMP-DRV-103",
-    "phone": "+91 99000 00103",
-    "assignedVehicle": "KA-27-TV-0000",
-    "assignedRoute": "Route 27",
-    "status": "Active"
-  },
-  {
-    "name": "Sunil Naik",
-    "employeeId": "EMP-DRV-104",
-    "phone": "+91 99000 00104",
-    "assignedVehicle": "KA-99-CAR-0001",
-    "assignedRoute": "Route Car",
-    "status": "Active"
-  },
-  {
-    "name": "Vijay Naik",
-    "employeeId": "EMP-DRV-105",
-    "phone": "+91 99000 00105",
-    "assignedVehicle": "KA-99-ECCO-0001",
-    "assignedRoute": "Route Ecco",
-    "status": "Active"
-  }
+  { name: "Devmanjunath M", employeeId: "EMP-DRV-001", phone: "+91 9972444550", assignedVehicle: "KA05AL8080", assignedRoute: "Route Ecco Car", status: "Active" },
+  { name: "Raghavendra R", employeeId: "EMP-DRV-002", phone: "+91 8861446172", assignedVehicle: "KA05AL1642", assignedRoute: "Route 01", status: "Active" },
+  { name: "Manjunath HR", employeeId: "EMP-DRV-003", phone: "+91 9900565365", assignedVehicle: "KA05AL1645", assignedRoute: "Route 02", status: "Active" },
+  { name: "Rajumon", employeeId: "EMP-DRV-004", phone: "+91 9620834936", assignedVehicle: "KA05AL1646", assignedRoute: "Route 03", status: "Active" },
+  { name: "Raja K C", employeeId: "EMP-DRV-005", phone: "+91 9901666746", assignedVehicle: "KA05AL1890", assignedRoute: "Route 04", status: "Active" },
+  { name: "Bharath Raj N", employeeId: "EMP-DRV-006", phone: "+91 7708350151", assignedVehicle: "KA05AL3112", assignedRoute: "Route 05", status: "Active" },
+  { name: "Soma Naik", employeeId: "EMP-DRV-007", phone: "+91 9972337542", assignedVehicle: "KA05AM3317", assignedRoute: "Route 06", status: "Active" },
+  { name: "Muni Choodaiah B M", employeeId: "EMP-DRV-008", phone: "+91 9972133327", assignedVehicle: "KA05AM3318", assignedRoute: "Route 07", status: "Active" },
+  { name: "Saibanna", employeeId: "EMP-DRV-009", phone: "+91 9164926837", assignedVehicle: "KA05AM4927", assignedRoute: "Route 08", status: "Active" },
+  { name: "Srinivasa", employeeId: "EMP-DRV-010", phone: "+91 9739539233", assignedVehicle: "KA05AM3881", assignedRoute: "Route 09", status: "Active" },
+  { name: "Sumanth G C", employeeId: "EMP-DRV-011", phone: "+91 8296801580", assignedVehicle: "KA05AM5541", assignedRoute: "Route 10", status: "Active" },
+  { name: "Nagaraju N", employeeId: "EMP-DRV-012", phone: "+91 9535085330", assignedVehicle: "KA05AM8222", assignedRoute: "Route 11", status: "Active" },
+  { name: "Parthasarathi", employeeId: "EMP-DRV-013", phone: "+91 7406050424", assignedVehicle: "KA05AP0787", assignedRoute: "Route 12", status: "Active" },
+  { name: "Raju B", employeeId: "EMP-DRV-014", phone: "+91 9980957119", assignedVehicle: "KA05AP0786", assignedRoute: "Route 13", status: "Active" },
+  { name: "Manjunatha K", employeeId: "EMP-DRV-015", phone: "+91 8105980947", assignedVehicle: "KA05AP0785", assignedRoute: "Route 14", status: "Active" },
+  { name: "Naveen M", employeeId: "EMP-DRV-016", phone: "+91 9481845727", assignedVehicle: "KA05AP0788", assignedRoute: "Route 15", status: "Active" },
+  { name: "Umesh N", employeeId: "EMP-DRV-017", phone: "+91 9738447755", assignedVehicle: "KA05AP1551", assignedRoute: "Route 16", status: "Active" },
+  { name: "Venkateshreddy", employeeId: "EMP-DRV-018", phone: "+91 9886231563", assignedVehicle: "KA05AP1550", assignedRoute: "Route 17", status: "Active" },
+  { name: "Santhosh Kumar C", employeeId: "EMP-DRV-019", phone: "+91 9980908010", assignedVehicle: "KA05AP1725", assignedRoute: "Route 18", status: "Active" },
+  { name: "Jai Kumar", employeeId: "EMP-DRV-020", phone: "+91 7760832939", assignedVehicle: "KA05AQ6799", assignedRoute: "Route 19", status: "Active" },
+  { name: "Ananda M", employeeId: "EMP-DRV-021", phone: "+91 9741605925", assignedVehicle: "KA05AQ6798", assignedRoute: "Route 20", status: "Active" },
+  { name: "Deepak S", employeeId: "EMP-DRV-022", phone: "+91 8073493899", assignedVehicle: "KA05AQ6625", assignedRoute: "Route 21", status: "Active" },
+  { name: "Vinod I D", employeeId: "EMP-DRV-023", phone: "+91 8197225717", assignedVehicle: "KA05AQ6624", assignedRoute: "Route 22", status: "Active" },
+  { name: "Girish D R", employeeId: "EMP-DRV-024", phone: "+91 8197679255", assignedVehicle: "KA05AQ7289", assignedRoute: "Route 23", status: "Active" },
+  { name: "Sudhakara C", employeeId: "EMP-DRV-025", phone: "+91 8088077759", assignedVehicle: "KA05AQ7927", assignedRoute: "Route 24", status: "Active" },
+  { name: "Mahalinga N", employeeId: "EMP-DRV-026", phone: "+91 6361762727", assignedVehicle: "KA05AS3154", assignedRoute: "Route 25", status: "Active" },
+  { name: "Shivakumar T M", employeeId: "EMP-DRV-027", phone: "+91 9019055383", assignedVehicle: "KA05AS3155", assignedRoute: "Route 26", status: "Active" },
+  { name: "Tejas Kumar K S", employeeId: "EMP-DRV-028", phone: "+91 7338319603", assignedVehicle: "KA05AS4439", assignedRoute: "Route 27", status: "Active" }
 ];
 
 const DEFAULT_VEHICLES: Vehicle[] = [
@@ -24432,7 +23621,66 @@ export const dbService = {
   saveStudents: (students: Student[]) => writeTable<Student>('transport_students', students),
   getNotifications: (): Notification[] => readTable<Notification>('transport_notifications'),
   saveNotifications: (notifications: Notification[]) => writeTable<Notification>('transport_notifications', notifications),
-  getAttendance: (): Attendance[] => readTable<Attendance>('transport_attendance'),
+  getAttendance: (): Attendance[] => {
+    const attendance = readTable<Attendance>('transport_attendance');
+    const students = readTable<Student>('transport_students');
+    const now = new Date();
+    
+    // Helper to format date in YYYY-MM-DD
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    
+    const todayStr = formatDate(now);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const tomorrowStr = formatDate(tomorrow);
+    
+    const datesToCheck = [todayStr, tomorrowStr];
+    let changed = false;
+    
+    datesToCheck.forEach(dateStr => {
+      // Check if we are past 8:00 PM of the previous day of dateStr
+      const targetDate = new Date(dateStr + 'T00:00:00');
+      const prevDay = new Date(targetDate);
+      prevDay.setDate(targetDate.getDate() - 1);
+      prevDay.setHours(20, 0, 0, 0);
+      
+      if (now >= prevDay) {
+        const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        // Auto-accept is active Monday to Saturday (1 to 6)
+        if (dayOfWeek >= 1 && dayOfWeek <= 6) {
+          const defaultDropTime = dayOfWeek === 6 ? '12:30 PM' : '3:30 PM';
+          
+          students.forEach(student => {
+            if (student.route && student.route !== 'None' && student.bus && student.bus !== 'None') {
+              const recordId = `ATT-${student.studentId}-${dateStr}`;
+              const exists = attendance.some(a => a.id === recordId);
+              if (!exists) {
+                attendance.push({
+                  id: recordId,
+                  date: dateStr,
+                  studentId: student.studentId,
+                  studentName: student.studentName,
+                  route: student.route,
+                  bus: student.bus,
+                  status: 'Present',
+                  parentDeclaration: 'Present',
+                  updatedBy: 'System (Auto-Accepted)',
+                  dropOffTime: defaultDropTime
+                });
+                changed = true;
+              }
+            }
+          });
+        }
+      }
+    });
+    
+    if (changed) {
+      writeTable<Attendance>('transport_attendance', attendance);
+    }
+    
+    return attendance;
+  },
   saveAttendance: (attendance: Attendance[]) => writeTable<Attendance>('transport_attendance', attendance),
   getFastagLogs: (): FastagLog[] => readTable<FastagLog>('transport_fastag_logs'),
   saveFastagLogs: (logs: FastagLog[]) => writeTable<FastagLog>('transport_fastag_logs', logs),

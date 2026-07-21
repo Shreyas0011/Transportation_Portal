@@ -491,6 +491,54 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
     }
   };
 
+  const handleStudentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    const studentName = formData.get('studentName') as string;
+    const studentId = formData.get('studentId') as string;
+    const parentContact = formData.get('parentContact') as string;
+    const parentEmail = formData.get('parentEmail') as string || '';
+    const route = formData.get('route') as string || 'None';
+    const bus = formData.get('bus') as string || 'None';
+    const pickupStop = formData.get('pickupStop') as string || 'None';
+    const dropStop = formData.get('dropStop') as string || 'None';
+
+    if (!studentName || !studentId || !parentContact) {
+      toast.error('All fields marked * are required');
+      return;
+    }
+
+    const payload: Student = {
+      studentId,
+      studentName,
+      route,
+      bus,
+      pickupStop,
+      dropStop,
+      parentContact,
+      parentEmail,
+    };
+
+    setLoading(true);
+    try {
+      if (modalOpen.mode === 'add') {
+        await transportApi.addStudent(payload);
+        toast.success(`Student ${studentName} registered successfully`);
+      } else {
+        await transportApi.updateStudent(payload);
+        toast.success(`Student ${studentName} details modified`);
+      }
+      setModalOpen({ open: false, type: '', mode: 'add' });
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Action: Create Notification Announcement
   const handleAnnouncementSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1605,6 +1653,13 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                   <option key={r.routeName} value={r.routeName}>{r.routeName}</option>
                 ))}
               </select>
+              <button 
+                className="btn-add"
+                onClick={() => setModalOpen({ open: true, type: 'student', mode: 'add' })}
+              >
+                <Plus size={18} />
+                <span>Add Student</span>
+              </button>
             </div>
           </div>
 
@@ -1653,6 +1708,15 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                           >
                             Assign / Edit
                           </button>
+                          <button
+                            className="btn-add"
+                            onClick={() => {
+                              setModalOpen({ open: true, type: 'student', mode: 'edit', data: s });
+                            }}
+                            style={{ background: '#f59e0b', color: '#fff', border: 'none', marginLeft: '6px' }}
+                          >
+                            Edit Profile
+                          </button>
                           {s.bus !== 'None' && (
                             <button
                               className="btn-danger"
@@ -1670,6 +1734,118 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
             </table>
           </div>
 
+          {/* Student profile form modal */}
+          {modalOpen.open && modalOpen.type === 'student' && (
+            <div className="modal-overlay">
+              <div className="modal" style={{ maxWidth: '500px' }}>
+                <div className="modal-header">
+                  <h3>{modalOpen.mode === 'add' ? 'Register New Student Passenger' : 'Modify Student Passenger'}</h3>
+                  <button className="modal-close" onClick={() => setModalOpen({ open: false, type: '', mode: 'add' })}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <form onSubmit={handleStudentSubmit}>
+                  <div className="modal-body">
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Student Name *</label>
+                      <input
+                        type="text"
+                        name="studentName"
+                        className="form-input"
+                        required
+                        defaultValue={modalOpen.data?.studentName || ''}
+                        placeholder="e.g. John Doe"
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Student ID *</label>
+                      <input
+                        type="text"
+                        name="studentId"
+                        className="form-input"
+                        required
+                        defaultValue={modalOpen.data?.studentId || ''}
+                        readOnly={modalOpen.mode === 'edit'}
+                        placeholder="e.g. 251P2474"
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Parent Contact Number *</label>
+                      <input
+                        type="text"
+                        name="parentContact"
+                        className="form-input"
+                        required
+                        defaultValue={modalOpen.data?.parentContact || ''}
+                        placeholder="e.g. +91 98765 43210"
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Parent Email (Optional)</label>
+                      <input
+                        type="email"
+                        name="parentEmail"
+                        className="form-input"
+                        defaultValue={modalOpen.data?.parentEmail || ''}
+                        placeholder="e.g. parent@example.com"
+                      />
+                    </div>
+                    
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Assigned Route</label>
+                      <select name="route" className="form-select" defaultValue={modalOpen.data?.route || 'None'}>
+                        <option value="None">None (Unassigned)</option>
+                        {routes.map((r) => (
+                          <option key={r.routeName} value={r.routeName}>{r.routeName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Assigned Bus</label>
+                      <select name="bus" className="form-select" defaultValue={modalOpen.data?.bus || 'None'}>
+                        <option value="None">None (Unassigned)</option>
+                        {vehicles.map((v) => (
+                          <option key={v.vehicleNumber} value={v.vehicleNumber}>{v.vehicleNumber} - {v.vehicleModel}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Pickup Stop</label>
+                      <input
+                        type="text"
+                        name="pickupStop"
+                        className="form-input"
+                        defaultValue={modalOpen.data?.pickupStop || 'None'}
+                        placeholder="e.g. Sector 4 Gate"
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Drop Stop</label>
+                      <input
+                        type="text"
+                        name="dropStop"
+                        className="form-input"
+                        defaultValue={modalOpen.data?.dropStop || 'None'}
+                        placeholder="e.g. Sector 4 Gate"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-actions" style={{ padding: '0 24px 24px' }}>
+                    <button type="button" className="btn-cancel" onClick={() => setModalOpen({ open: false, type: '', mode: 'add' })}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn-submit">
+                      {modalOpen.mode === 'add' ? 'Register Student' : 'Save Details'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* Allocation form modal */}
           {modalOpen.open && modalOpen.type === 'allocate' && (
             <div className="modal-overlay">
@@ -1684,7 +1860,7 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                   <div className="modal-body">
                     <input type="hidden" name="studentId" value={modalOpen.data?.studentId} />
                     <div className="form-grid">
-                      <div className="form-group">
+                      <div className="form-group" style={{ marginBottom: '14px' }}>
                         <label className="form-label">Select Route</label>
                         <select 
                           name="route" 
@@ -1713,7 +1889,7 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                           ))}
                         </select>
                       </div>
-                      <div className="form-group">
+                      <div className="form-group" style={{ marginBottom: '14px' }}>
                         <label className="form-label">Select Bus</label>
                         <select 
                           name="bus" 
@@ -1727,7 +1903,7 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                           ))}
                         </select>
                       </div>
-                      <div className="form-group">
+                      <div className="form-group" style={{ marginBottom: '14px' }}>
                         <label className="form-label">Pickup Stop</label>
                         <select 
                           name="pickupStop" 
@@ -1741,7 +1917,7 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                           ))}
                         </select>
                       </div>
-                      <div className="form-group">
+                      <div className="form-group" style={{ marginBottom: '14px' }}>
                         <label className="form-label">Drop Stop</label>
                         <select 
                           name="dropStop" 
@@ -1869,6 +2045,11 @@ export const TransportHeadDashboard: React.FC<DashboardProps> = ({ activeTab, us
                           <span className={`badge ${parentDecl === 'Absent' ? 'absent' : 'active'}`}>
                             {parentDecl}
                           </span>
+                          {a.dropOffTime && parentDecl !== 'Absent' && (
+                            <span style={{ display: 'block', fontSize: '11px', color: '#2563eb', fontWeight: 600, marginTop: '4px' }}>
+                              Drop-off: {a.dropOffTime}
+                            </span>
+                          )}
                         </td>
                         <td>
                           <span className={`badge ${

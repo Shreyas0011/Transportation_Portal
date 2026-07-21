@@ -335,6 +335,16 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
       if (method === 'get') {
         return { data: students, status: 200, statusText: 'OK', headers: {}, config };
       }
+      
+      if (method === 'post' && !url.includes('/allocate') && !url.includes('/deallocate')) {
+        const newStudent: Student = data;
+        if (students.some((s) => s.studentId === newStudent.studentId)) {
+          throw new Error('Student ID already exists');
+        }
+        students.push(newStudent);
+        dbService.saveStudents(students);
+        return { data: newStudent, status: 201, statusText: 'Created', headers: {}, config };
+      }
 
       if (method === 'put') {
         const updatedStudent: Student = data;

@@ -103,7 +103,8 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ activeTab, use
       );
       return {
         ...s,
-        status: attRecord?.status || 'No Log'
+        status: attRecord?.status || 'No Log',
+        dropOffTime: attRecord?.dropOffTime
       };
     });
   };
@@ -258,7 +259,7 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ activeTab, use
                                             border: isAbsent ? '1px solid #fca5a5' : '1px solid #a7f3d0'
                                           }}
                                         >
-                                          {stu.studentName} {isAbsent ? '(Absent)' : '(Present)'}
+                                          {stu.studentName} {isAbsent ? '(Absent)' : stu.dropOffTime ? `(Present - Dropoff: ${stu.dropOffTime})` : '(Present)'}
                                         </span>
                                       );
                                     })}
@@ -336,7 +337,14 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ activeTab, use
                         <td style={{ fontWeight: 700 }}>{s.studentName}</td>
                         <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{s.studentId}</td>
                         <td style={{ fontWeight: 500 }}>{s.pickupStop === 'None' ? '-' : s.pickupStop}</td>
-                        <td style={{ fontWeight: 500 }}>{s.dropStop === 'None' ? '-' : s.dropStop}</td>
+                        <td style={{ fontWeight: 500 }}>
+                          {s.dropStop === 'None' ? '-' : s.dropStop}
+                          {todayRec?.dropOffTime && (
+                            <span style={{ display: 'block', fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>
+                              Option: {todayRec.dropOffTime}
+                            </span>
+                          )}
+                        </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontWeight: 600 }}>
                             <Phone size={14} />

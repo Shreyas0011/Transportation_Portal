@@ -84,6 +84,10 @@ export const transportApi = {
     const response = await axiosInstance.put('/students', student);
     return response.data as Student;
   },
+  addStudent: async (student: Student) => {
+    const response = await axiosInstance.post('/students', student);
+    return response.data as Student;
+  },
 
   // Attendance
   getAttendance: async () => {

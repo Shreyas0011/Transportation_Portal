@@ -822,6 +822,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
                             <span className={`badge ${a.status === 'Absent' ? 'absent' : a.status === 'Dropped' ? 'info' : 'active'}`}>
                               {a.status}
                             </span>
+                            {a.dropOffTime && a.status !== 'Absent' && (
+                              <span style={{ display: 'block', fontSize: '11px', color: '#2563eb', fontWeight: 600, marginTop: '4px' }}>
+                                Drop-off: {a.dropOffTime}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))

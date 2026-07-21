@@ -1,7 +1,7 @@
 // src/pages/parent/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  Bus, Calendar, Phone, AlertCircle, CheckCircle2, XCircle, UserCheck, Shield
+  Bus, Calendar, Phone, AlertCircle, UserCheck, Shield, Clock
 } from 'lucide-react';
 import { transportApi } from '../../api/transportApi';
 import { useToast } from '../../components/Toast';
@@ -31,19 +31,30 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   // Attendance marking state
-  const [todayAttendanceStatus, setTodayAttendanceStatus] = useState<'Present' | 'Absent' | null>(null);
   const [todayRecord, setTodayRecord] = useState<Attendance | null>(null);
   const [submittingAttendance, setSubmittingAttendance] = useState(false);
 
-  const handleMarkAttendance = async (status: 'Present' | 'Absent') => {
+  const handleMarkAttendanceForDate = async (dateStr: string, status: 'Present' | 'Absent', customDropTime?: string) => {
     if (!student) return;
     setSubmittingAttendance(true);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const recordId = `ATT-${student.studentId}-${todayStr}`;
+    const recordId = `ATT-${student.studentId}-${dateStr}`;
+
+    const existingRec = attendance.find((a) => a.id === recordId);
+    
+    let dropTimeVal = undefined;
+    if (status === 'Present') {
+      if (customDropTime) {
+        dropTimeVal = customDropTime;
+      } else {
+        const targetDate = new Date(dateStr + 'T00:00:00');
+        const dayOfWeek = targetDate.getDay();
+        dropTimeVal = existingRec?.dropOffTime || (dayOfWeek === 6 ? '12:30 PM' : '3:30 PM');
+      }
+    }
 
     const record: Attendance = {
       id: recordId,
-      date: todayStr,
+      date: dateStr,
       studentId: student.studentId,
       studentName: student.studentName,
       route: student.route,
@@ -51,25 +62,68 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
       status: status === 'Absent' ? 'Absent' : 'Present',
       parentDeclaration: status,
       updatedBy: 'Parent',
-      accountabilityStatus: todayRecord?.accountabilityStatus || undefined,
-      accountabilityNote: todayRecord?.accountabilityNote || undefined,
+      accountabilityStatus: existingRec?.accountabilityStatus || undefined,
+      accountabilityNote: existingRec?.accountabilityNote || undefined,
+      dropOffTime: dropTimeVal
     };
 
     try {
       await transportApi.saveAttendance(record);
-      setTodayAttendanceStatus(status);
-      setTodayRecord(record);
       // Refresh attendance list
       const updated = await transportApi.getAttendance();
       const childAtt = updated.filter((a) => a.studentId === student.studentId);
       childAtt.sort((a, b) => b.date.localeCompare(a.date));
       setAttendance(childAtt);
-      toast.success(`Your ward has been marked ${status} for today's transit.`);
+      
+      // Update todayRecord if this was today's attendance
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (dateStr === todayStr) {
+        setTodayRecord(record);
+      }
+      
+      toast.success(`Ward attendance updated successfully.`);
     } catch (err) {
       toast.error('Failed to update attendance. Please try again.');
     } finally {
       setSubmittingAttendance(false);
     }
+  };
+
+  const handleSelectDropTimeForDate = async (dateStr: string, time: string) => {
+    await handleMarkAttendanceForDate(dateStr, 'Present', time);
+  };
+
+  const getDropTimeOptions = (day: number) => {
+    if (day === 6) {
+      return ['12:30 PM', '3:30 PM', '5:30 PM'];
+    }
+    return ['3:30 PM', '5:30 PM'];
+  };
+
+  const getWeekDays = () => {
+    const current = new Date();
+    const day = current.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    
+    // Find Monday's date
+    const distanceToMonday = day === 0 ? 1 : 1 - day;
+    const monday = new Date(current);
+    monday.setDate(current.getDate() + distanceToMonday);
+    
+    const days = [];
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      days.push({
+        dateStr,
+        dayName: dayNames[i],
+        dayOfWeek: i + 1, // 1 = Mon, ..., 6 = Sat
+        displayDate: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      });
+    }
+    return days;
   };
 
   const loadParentData = async () => {
@@ -115,11 +169,6 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
       const todayStr = new Date().toISOString().split('T')[0];
       const todayRec = childAttendance.find((a) => a.date === todayStr);
       setTodayRecord(todayRec || null);
-      if (todayRec) {
-        setTodayAttendanceStatus(todayRec.status === 'Absent' ? 'Absent' : 'Present');
-      } else {
-        setTodayAttendanceStatus(null);
-      }
 
       // Set notifications
       setNotifications(notificationsList);
@@ -322,13 +371,14 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                   <th>Date</th>
                   <th>Route</th>
                   <th>Bus Number</th>
+                  <th>Drop-off Option</th>
                   <th>Attendance status</th>
                 </tr>
               </thead>
               <tbody>
                 {attendance.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', color: '#64748b', padding: '30px' }}>
+                    <td colSpan={5} style={{ textAlign: 'center', color: '#64748b', padding: '30px' }}>
                       No attendance entries logged.
                     </td>
                   </tr>
@@ -338,6 +388,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                       <td style={{ fontWeight: 700 }}>{record.date}</td>
                       <td style={{ fontWeight: 500 }}>{record.route}</td>
                       <td style={{ fontWeight: 600 }}>{record.bus}</td>
+                      <td style={{ fontWeight: 600, color: '#2563eb' }}>{record.dropOffTime || '-'}</td>
                       <td>
                         <span className={`badge ${
                           record.status === 'Absent' ? 'absent'
@@ -358,12 +409,10 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
         </div>
       )}
 
-      {/* ── TODAY'S ATTENDANCE MARKING TAB ── */}
+      {/* ── WEEK'S ATTENDANCE MARKING TAB ── */}
       {activeTab === 'today-attendance' && (() => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const displayDate = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         return (
-          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '720px', margin: '0 auto' }}>
             {/* Header */}
             <div className="dashboard-panel" style={{ marginBottom: '20px', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#fff', border: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
@@ -371,8 +420,8 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                   <UserCheck size={22} />
                 </div>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Mark Today's Attendance</h2>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>{displayDate}</p>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff' }}>Mark Week's Attendance</h2>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>Monday to Saturday Console</p>
                 </div>
               </div>
             </div>
@@ -410,6 +459,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                            : todayRecord.status === 'No-Show' ? '✕ No-Show' 
                            : todayRecord.status === 'Boarded' ? '✓ Boarded' 
                            : todayRecord.status === 'Dropped' ? '✓ Dropped' 
+                           : todayRecord.updatedBy === 'System (Auto-Accepted)' ? '✓ Present (Auto-Accepted)'
                            : '✓ Present'}
                         </span>
                       ) : (
@@ -419,14 +469,14 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                   </div>
                 </div>
 
-                {/* Discrepancy Warnings */}
+                {/* Discrepancy Warnings for Today */}
                 {todayRecord?.status === 'No-Show' && (
                   <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '14px', padding: '16px 20px', display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '20px' }}>
                     <AlertCircle size={22} style={{ color: '#ef4444', marginTop: '2px', flexShrink: 0 }} />
                     <div style={{ flexGrow: 1 }}>
                       <strong style={{ color: '#991b1b', fontSize: '14px', display: 'block', marginBottom: '4px' }}>Boarding Discrepancy Alert!</strong>
                       <p style={{ margin: 0, fontSize: '13px', color: '#7f1d1d', lineHeight: 1.5 }}>
-                        Your ward was marked <strong>Present</strong>, but the driver reported a <strong>No-Show</strong> (did not board the bus). Please verify if they traveled via alternate transit.
+                        Your ward was marked <strong>Present</strong> today, but the driver reported a <strong>No-Show</strong> (did not board the bus). Please verify if they traveled via alternate transit.
                       </p>
                       {todayRecord?.accountabilityStatus === 'Warned' && (
                         <div style={{ marginTop: '12px', padding: '12px', background: '#fee2e2', borderRadius: '10px', borderLeft: '4px solid #dc2626' }}>
@@ -443,82 +493,174 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                   </div>
                 )}
 
-                {/* Attendance Action Card */}
-                <div className="dashboard-panel" style={{ marginBottom: '20px' }}>
-                  <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#475569', lineHeight: 1.6 }}>
-                    Please indicate whether your ward <strong>{student?.studentName}</strong> will be taking the school bus <strong>today ({todayStr})</strong>. This status will be immediately visible to the assigned driver, transport head, and system administrator.
-                  </p>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    {/* Present Button */}
-                    <button
-                      onClick={() => handleMarkAttendance('Present')}
-                      disabled={submittingAttendance}
-                      style={{
-                        padding: '24px 16px',
-                        border: '2px solid',
+                {/* Weekly Attendance Grid */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
+                  {getWeekDays().map((day) => {
+                    const dayRecord = attendance.find((a) => a.date === day.dateStr);
+                    const statusIsPresent = dayRecord ? dayRecord.status !== 'Absent' : false;
+                    const statusIsAbsent = dayRecord ? dayRecord.status === 'Absent' : false;
+                    const selectedDropTimeForDay = dayRecord?.dropOffTime || (day.dayOfWeek === 6 ? '12:30 PM' : '3:30 PM');
+                    
+                    return (
+                      <div key={day.dateStr} style={{
+                        background: '#ffffff',
+                        padding: '20px',
                         borderRadius: '14px',
-                        cursor: submittingAttendance ? 'not-allowed' : 'pointer',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
                         display: 'flex',
                         flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s ease',
-                        background: todayAttendanceStatus === 'Present' ? '#d1fae5' : '#f8fafc',
-                        borderColor: todayAttendanceStatus === 'Present' ? '#10b981' : '#e2e8f0',
-                        opacity: submittingAttendance ? 0.7 : 1,
-                      }}
-                    >
-                      <CheckCircle2 size={36} style={{ color: todayAttendanceStatus === 'Present' ? '#059669' : '#94a3b8' }} />
-                      <div style={{ textAlign: 'center' }}>
-                        <strong style={{ fontSize: '16px', color: todayAttendanceStatus === 'Present' ? '#065f46' : '#0f172a', display: 'block' }}>Present</strong>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>Ward will board the bus today</span>
-                      </div>
-                      {todayAttendanceStatus === 'Present' && (
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#059669', background: '#a7f3d0', padding: '3px 10px', borderRadius: '20px' }}>Currently Selected</span>
-                      )}
-                    </button>
+                        gap: '16px'
+                      }}>
+                        {/* Day & Date Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong style={{ fontSize: '16px', color: '#0f172a' }}>{day.dayName}</strong>
+                            <span style={{ fontSize: '12.5px', color: '#64748b', marginLeft: '8px' }}>{day.displayDate}</span>
+                          </div>
+                          <div>
+                            {dayRecord ? (
+                              <span 
+                                className={`badge ${
+                                  dayRecord.status === 'Absent' ? 'absent'
+                                  : dayRecord.status === 'No-Show' ? 'danger'
+                                  : dayRecord.status === 'Boarded' ? 'active'
+                                  : dayRecord.status === 'Dropped' ? 'info'
+                                  : 'active'
+                                }`} 
+                                style={{ fontSize: '12px', padding: '4px 12px' }}
+                              >
+                                {dayRecord.status === 'Absent' ? '✕ Absent' 
+                                 : dayRecord.status === 'No-Show' ? '✕ No-Show' 
+                                 : dayRecord.status === 'Boarded' ? '✓ Boarded' 
+                                 : dayRecord.status === 'Dropped' ? '✓ Dropped' 
+                                 : dayRecord.updatedBy === 'System (Auto-Accepted)' ? '✓ Present (Auto-Accepted)'
+                                 : '✓ Present'}
+                              </span>
+                            ) : (
+                              <span className="badge inactive" style={{ fontSize: '12px', padding: '4px 12px' }}>Not Marked</span>
+                            )}
+                          </div>
+                        </div>
 
-                    {/* Absent Button */}
-                    <button
-                      onClick={() => handleMarkAttendance('Absent')}
-                      disabled={submittingAttendance}
-                      style={{
-                        padding: '24px 16px',
-                        border: '2px solid',
-                        borderRadius: '14px',
-                        cursor: submittingAttendance ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '10px',
-                        transition: 'all 0.2s ease',
-                        background: todayAttendanceStatus === 'Absent' ? '#fee2e2' : '#f8fafc',
-                        borderColor: todayAttendanceStatus === 'Absent' ? '#ef4444' : '#e2e8f0',
-                        opacity: submittingAttendance ? 0.7 : 1,
-                      }}
-                    >
-                      <XCircle size={36} style={{ color: todayAttendanceStatus === 'Absent' ? '#dc2626' : '#94a3b8' }} />
-                      <div style={{ textAlign: 'center' }}>
-                        <strong style={{ fontSize: '16px', color: todayAttendanceStatus === 'Absent' ? '#7f1d1d' : '#0f172a', display: 'block' }}>Absent</strong>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>Ward will NOT board today</span>
-                      </div>
-                      {todayAttendanceStatus === 'Absent' && (
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#dc2626', background: '#fecaca', padding: '3px 10px', borderRadius: '20px' }}>Currently Selected</span>
-                      )}
-                    </button>
-                  </div>
+                        {/* Controls (Attendance Toggle + Drop-off Selection) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                          {/* Attendance Status Selector */}
+                          <div>
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '8px' }}>
+                              Attendance Status
+                            </span>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleMarkAttendanceForDate(day.dateStr, 'Present')}
+                                disabled={submittingAttendance}
+                                style={{
+                                  flex: 1,
+                                  padding: '10px 14px',
+                                  borderRadius: '10px',
+                                  border: '2px solid',
+                                  borderColor: statusIsPresent ? '#10b981' : '#e2e8f0',
+                                  backgroundColor: statusIsPresent ? '#d1fae5' : '#f8fafc',
+                                  color: statusIsPresent ? '#065f46' : '#475569',
+                                  fontWeight: 600,
+                                  fontSize: '13px',
+                                  cursor: submittingAttendance ? 'not-allowed' : 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  opacity: submittingAttendance ? 0.7 : 1
+                                }}
+                              >
+                                Present
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMarkAttendanceForDate(day.dateStr, 'Absent')}
+                                disabled={submittingAttendance}
+                                style={{
+                                  flex: 1,
+                                  padding: '10px 14px',
+                                  borderRadius: '10px',
+                                  border: '2px solid',
+                                  borderColor: statusIsAbsent ? '#ef4444' : '#e2e8f0',
+                                  backgroundColor: statusIsAbsent ? '#fee2e2' : '#f8fafc',
+                                  color: statusIsAbsent ? '#7f1d1d' : '#475569',
+                                  fontWeight: 600,
+                                  fontSize: '13px',
+                                  cursor: submittingAttendance ? 'not-allowed' : 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  opacity: submittingAttendance ? 0.7 : 1
+                                }}
+                              >
+                                Absent
+                              </button>
+                            </div>
+                          </div>
 
-                  {submittingAttendance && (
-                    <p style={{ textAlign: 'center', color: '#64748b', fontSize: '13px', marginTop: '16px' }}>Saving attendance...</p>
-                  )}
+                          {/* Drop-off Option Selector */}
+                          <div>
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: '8px' }}>
+                              Preferred Drop-off Time
+                            </span>
+                            {statusIsPresent ? (
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                {getDropTimeOptions(day.dayOfWeek).map((time) => {
+                                  const isSelected = selectedDropTimeForDay === time;
+                                  return (
+                                    <button
+                                      key={time}
+                                      type="button"
+                                      onClick={() => handleSelectDropTimeForDate(day.dateStr, time)}
+                                      disabled={submittingAttendance}
+                                      style={{
+                                        flex: 1,
+                                        padding: '10px 12px',
+                                        borderRadius: '10px',
+                                        border: '2px solid',
+                                        borderColor: isSelected ? '#2563eb' : '#e2e8f0',
+                                        backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                                        color: isSelected ? '#1e40af' : '#64748b',
+                                        fontWeight: 600,
+                                        fontSize: '12.5px',
+                                        cursor: submittingAttendance ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                      }}
+                                    >
+                                      <Clock size={14} style={{ color: isSelected ? '#2563eb' : '#94a3b8' }} />
+                                      <span>{time}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div style={{ 
+                                background: '#f1f5f9', 
+                                color: '#94a3b8', 
+                                fontSize: '13px', 
+                                padding: '10px 14px', 
+                                borderRadius: '10px', 
+                                textAlign: 'center',
+                                border: '1px dashed #cbd5e1',
+                                fontWeight: 500
+                              }}>
+                                Not riding (Absent)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Info Notice */}
-                <div style={{ background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                <div style={{ background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', padding: '14px 18px', display: 'flex', gap: '10px', alignItems: 'flex-start', marginTop: '20px' }}>
                   <Shield size={16} style={{ color: '#2563eb', marginTop: '2px', flexShrink: 0 }} />
                   <p style={{ margin: 0, fontSize: '12.5px', color: '#1e40af', lineHeight: 1.6 }}>
-                    Your attendance selection is visible to the bus driver, Transport Head, and System Administrator. You can change it at any time before departure. The driver's stop-by-stop view will reflect your choice in real time.
+                    Your weekly attendance choices are visible to the driver, Transport Head, and System Administrator in real time. Default drop-offs are set dynamically by day.
                   </p>
                 </div>
               </>

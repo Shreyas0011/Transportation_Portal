@@ -46,6 +46,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
   // Role selections for parent mapping
   const [selectedRole, setSelectedRole] = useState<'Transport Head' | 'Parent' | 'Driver' | 'Super Admin'>('Parent');
 
+  const [studentModalOpen, setStudentModalOpen] = useState<{ open: boolean; mode: 'add' | 'edit'; data?: Student }>({
+    open: false,
+    mode: 'add'
+  });
+
   const fetchAdminData = async () => {
     setLoading(true);
     try {
@@ -107,6 +112,54 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
       await transportApi.createUser(payload);
       toast.success(`User account for ${name} registered successfully`);
       setModalOpen({ open: false, type: 'user' });
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStudentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    const studentName = formData.get('studentName') as string;
+    const studentId = formData.get('studentId') as string;
+    const parentContact = formData.get('parentContact') as string;
+    const parentEmail = formData.get('parentEmail') as string || '';
+    const route = formData.get('route') as string || 'None';
+    const bus = formData.get('bus') as string || 'None';
+    const pickupStop = formData.get('pickupStop') as string || 'None';
+    const dropStop = formData.get('dropStop') as string || 'None';
+
+    if (!studentName || !studentId || !parentContact) {
+      toast.error('All fields marked * are required');
+      return;
+    }
+
+    const payload: Student = {
+      studentId,
+      studentName,
+      route,
+      bus,
+      pickupStop,
+      dropStop,
+      parentContact,
+      parentEmail,
+    };
+
+    setLoading(true);
+    try {
+      if (studentModalOpen.mode === 'add') {
+        await transportApi.addStudent(payload);
+        toast.success(`Student ${studentName} registered successfully`);
+      } else {
+        await transportApi.updateStudent(payload);
+        toast.success(`Student ${studentName} details modified`);
+      }
+      setStudentModalOpen({ open: false, mode: 'add' });
       fetchAdminData();
     } catch (err: any) {
       toast.error(err.response?.data?.message || err.message);
@@ -660,8 +713,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
             </h2>
           </div>
           
-          <div className="search-filter-container">
-            <div className="search-input-wrapper">
+          <div className="search-filter-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="search-input-wrapper" style={{ flexGrow: 1, marginRight: '16px' }}>
               <input
                 type="text"
                 className="search-input"
@@ -671,6 +724,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <button 
+              className="btn-add"
+              onClick={() => setStudentModalOpen({ open: true, mode: 'add' })}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+            >
+              <Plus size={16} />
+              <span>Add Student</span>
+            </button>
           </div>
 
           <div className="table-container">
@@ -684,6 +745,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
                   <th>Pickup Stop</th>
                   <th>Drop Stop</th>
                   <th>Parent Contact</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -695,7 +757,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
                   if (filtered.length === 0) {
                     return (
                       <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', color: '#64748b', padding: '30px' }}>
+                        <td colSpan={8} style={{ textAlign: 'center', color: '#64748b', padding: '30px' }}>
                           No student records found matching search.
                         </td>
                       </tr>
@@ -710,12 +772,133 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
                       <td>{s.pickupStop === 'None' ? '-' : s.pickupStop}</td>
                       <td>{s.dropStop === 'None' ? '-' : s.dropStop}</td>
                       <td>{s.parentContact}</td>
+                      <td>
+                        <button
+                          className="btn-add"
+                          onClick={() => setStudentModalOpen({ open: true, mode: 'edit', data: s })}
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                          Edit Profile
+                        </button>
+                      </td>
                     </tr>
                   ));
                 })()}
               </tbody>
             </table>
           </div>
+
+          {/* Student profile form modal */}
+          {studentModalOpen.open && (
+            <div className="modal-overlay">
+              <div className="modal" style={{ maxWidth: '500px' }}>
+                <div className="modal-header">
+                  <h3>{studentModalOpen.mode === 'add' ? 'Register New Student Passenger' : 'Modify Student Passenger'}</h3>
+                  <button className="modal-close" onClick={() => setStudentModalOpen({ open: false, mode: 'add' })}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <form onSubmit={handleStudentSubmit}>
+                  <div className="modal-body">
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Student Name *</label>
+                      <input
+                        type="text"
+                        name="studentName"
+                        className="form-input"
+                        required
+                        defaultValue={studentModalOpen.data?.studentName || ''}
+                        placeholder="e.g. John Doe"
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Student ID *</label>
+                      <input
+                        type="text"
+                        name="studentId"
+                        className="form-input"
+                        required
+                        defaultValue={studentModalOpen.data?.studentId || ''}
+                        readOnly={studentModalOpen.mode === 'edit'}
+                        placeholder="e.g. 251P2474"
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Parent Contact Number *</label>
+                      <input
+                        type="text"
+                        name="parentContact"
+                        className="form-input"
+                        required
+                        defaultValue={studentModalOpen.data?.parentContact || ''}
+                        placeholder="e.g. +91 98765 43210"
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Parent Email (Optional)</label>
+                      <input
+                        type="email"
+                        name="parentEmail"
+                        className="form-input"
+                        defaultValue={studentModalOpen.data?.parentEmail || ''}
+                        placeholder="e.g. parent@example.com"
+                      />
+                    </div>
+                    
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Assigned Route</label>
+                      <select name="route" className="form-select" defaultValue={studentModalOpen.data?.route || 'None'}>
+                        <option value="None">None (Unassigned)</option>
+                        {routes.map((r) => (
+                          <option key={r.routeName} value={r.routeName}>{r.routeName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Assigned Bus</label>
+                      <select name="bus" className="form-select" defaultValue={studentModalOpen.data?.bus || 'None'}>
+                        <option value="None">None (Unassigned)</option>
+                        {vehicles.map((v) => (
+                          <option key={v.vehicleNumber} value={v.vehicleNumber}>{v.vehicleNumber} - {v.vehicleModel}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Pickup Stop</label>
+                      <input
+                        type="text"
+                        name="pickupStop"
+                        className="form-input"
+                        defaultValue={studentModalOpen.data?.pickupStop || 'None'}
+                        placeholder="e.g. Sector 4 Gate"
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '14px' }}>
+                      <label className="form-label">Drop Stop</label>
+                      <input
+                        type="text"
+                        name="dropStop"
+                        className="form-input"
+                        defaultValue={studentModalOpen.data?.dropStop || 'None'}
+                        placeholder="e.g. Sector 4 Gate"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-actions" style={{ padding: '0 24px 24px' }}>
+                    <button type="button" className="btn-cancel" onClick={() => setStudentModalOpen({ open: false, mode: 'add' })}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn-submit">
+                      {studentModalOpen.mode === 'add' ? 'Register Student' : 'Save Details'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -822,6 +1005,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
                             <span className={`badge ${a.status === 'Absent' ? 'absent' : a.status === 'Dropped' ? 'info' : 'active'}`}>
                               {a.status}
                             </span>
+                            {a.dropOffTime && a.status !== 'Absent' && (
+                              <span style={{ display: 'block', fontSize: '11px', color: '#2563eb', fontWeight: 600, marginTop: '4px' }}>
+                                Drop-off: {a.dropOffTime}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))
