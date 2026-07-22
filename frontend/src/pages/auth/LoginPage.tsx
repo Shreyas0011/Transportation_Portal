@@ -17,10 +17,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   const validateForm = () => {
     const tempErrors: { email?: string; password?: string } = {};
-    if (!email) {
-      tempErrors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      tempErrors.email = 'Please enter a valid email address';
+    if (!email.trim()) {
+      tempErrors.email = 'Email address or Enrollment ID is required';
     }
 
     if (!password) {
@@ -51,7 +49,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   // Helper function to auto-fill and login
   const handleQuickLogin = (roleEmail: string) => {
     setEmail(roleEmail);
-    let psw = 'parent123';
+    let psw = 'Parent@123';
     if (roleEmail.startsWith('head')) psw = 'head123';
     else if (roleEmail.startsWith('driver')) psw = 'driver123';
     else if (roleEmail.startsWith('super')) psw = 'super123';
@@ -88,7 +86,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           {/* Email input */}
           <div>
             <label className="modern-input-label" htmlFor="login-email">
-              EMAIL ADDRESS
+              EMAIL ADDRESS OR ENROLLMENT ID
             </label>
             <div className="modern-input-wrapper">
               <span className="modern-input-icon-left">
@@ -96,9 +94,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               </span>
               <input
                 id="login-email"
-                type="email"
+                type="text"
                 className={`modern-input ${errors.email ? 'error' : ''}`}
-                placeholder="operator@transcend.org"
+                placeholder="251P2474 or email address"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -179,11 +177,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <button
               className="modern-btn-secondary"
               style={{ fontSize: '11px', padding: '8px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-              onClick={() => handleQuickLogin('parent.251p2474@transcend.org')}
+              onClick={() => handleQuickLogin('251P2474')}
               disabled={loading}
             >
-              <span style={{ fontWeight: 700, color: '#7c3aed' }}>Parent (Triveni)</span>
-              <span style={{ fontSize: '9px', fontWeight: 500, color: '#94a3b8' }}>parent.251p2474@transcend.org</span>
+              <span style={{ fontWeight: 700, color: '#7c3aed' }}>Parent (Triveni T S)</span>
+              <span style={{ fontSize: '9px', fontWeight: 500, color: '#94a3b8' }}>ID: 251P2474</span>
             </button>
             <button
               className="modern-btn-secondary"

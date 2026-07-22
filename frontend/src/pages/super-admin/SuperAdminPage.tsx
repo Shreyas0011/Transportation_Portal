@@ -93,8 +93,18 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ active
       return;
     }
 
+    let finalName = name;
+    if (role === 'Parent' && studentId) {
+      const linkedStudent = students.find((s: Student) => s.studentId.trim().toUpperCase() === studentId.trim().toUpperCase());
+      if (linkedStudent) {
+        finalName = `Parent of ${linkedStudent.studentName}`;
+      } else if (!name.startsWith('Parent of ')) {
+        finalName = `Parent of ${name}`;
+      }
+    }
+
     const payload: User = {
-      name,
+      name: finalName,
       email,
       role,
       isActive: true,

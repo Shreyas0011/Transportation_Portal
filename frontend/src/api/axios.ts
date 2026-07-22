@@ -24,11 +24,44 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
   try {
     // ── 1. AUTH ENDPOINTS ──
     if (url.includes('/auth/login') && method === 'post') {
-      const { email, password } = data;
+      const identifier = (data.email || data.identifier || '').trim().toLowerCase();
+      const password = data.password;
       const users = dbService.getUsers();
-      const user = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase() && u.isActive
+      const students = dbService.getStudents();
+      const studentMap = new Map<string, string>(
+        students.map((s) => [s.studentId.trim().toLowerCase(), s.studentName])
       );
+
+      let user = users.find((u) => {
+        if (!u.isActive) return false;
+        const uEmail = u.email.toLowerCase();
+        const uStudentId = (u.studentId || '').trim().toLowerCase();
+        return (
+          uEmail === identifier ||
+          (uStudentId && uStudentId === identifier) ||
+          (uStudentId && `parent.${uStudentId}@transcend.org` === identifier)
+        );
+      });
+
+      // If user not found directly, check if identifier matches a studentId in student table
+      if (!user && identifier) {
+        const student = students.find((s) => s.studentId.trim().toLowerCase() === identifier);
+        if (student) {
+          user = users.find(
+            (u) => u.isActive && u.role === 'Parent' && (u.studentId?.toLowerCase() === student.studentId.toLowerCase() || u.email.toLowerCase() === student.parentEmail?.toLowerCase())
+          );
+          if (!user) {
+            user = {
+              email: student.parentEmail || `parent.${student.studentId.toLowerCase()}@transcend.org`,
+              role: 'Parent',
+              name: `Parent of ${student.studentName}`,
+              studentId: student.studentId,
+              isActive: true,
+              password: 'Parent@123',
+            };
+          }
+        }
+      }
 
       if (!user) {
         throw new Error('User not found or deactivated');
@@ -38,10 +71,27 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
         throw new Error('Incorrect password');
       }
 
+      let displayName = user.name;
+      if (user.role === 'Parent' && user.studentId) {
+        const sName = studentMap.get(user.studentId.trim().toLowerCase());
+        if (sName) {
+          displayName = `Parent of ${sName}`;
+        }
+      }
+
       // Successful login
       const token = `mock-token-${user.role.replace(' ', '-').toLowerCase()}-${user.email}`;
       return {
-        data: { accessToken: token, user: { email: user.email, name: user.name, role: user.role, studentId: user.studentId, employeeId: user.employeeId } },
+        data: {
+          accessToken: token,
+          user: {
+            email: user.email,
+            name: displayName,
+            role: user.role,
+            studentId: user.studentId,
+            employeeId: user.employeeId,
+          },
+        },
         status: 200,
         statusText: 'OK',
         headers: {},
@@ -483,6 +533,9 @@ axiosInstance.defaults.adapter = async function (config): Promise<AxiosResponse<
           if (sIndex !== -1) {
             students[sIndex].parentEmail = newUser.email;
             dbService.saveStudents(students);
+            newUser.name = `Parent of ${students[sIndex].studentName}`;
+          } else if (newUser.studentId) {
+            newUser.name = `Parent of ${newUser.studentId}`;
           }
         }
 

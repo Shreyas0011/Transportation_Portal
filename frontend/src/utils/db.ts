@@ -99,7 +99,7 @@ export interface User {
   isActive: boolean;
 }
 
-const DB_VERSION = 'v4.0';
+const DB_VERSION = 'v8.0';
 
 const DEFAULT_USERS: User[] = [
   {
@@ -23494,6 +23494,65 @@ const DEFAULT_NOTIFICATIONS: Notification[] = [
   },
 ];
 
+// Ensure every student in DEFAULT_STUDENTS has a corresponding Parent user in DEFAULT_USERS
+const existingParentStudentIds = new Set(
+  DEFAULT_USERS.filter((u) => u.role === 'Parent' && u.studentId).map((u) => u.studentId!.trim().toUpperCase())
+);
+
+DEFAULT_STUDENTS.forEach((student) => {
+  const sidUpper = student.studentId.trim().toUpperCase();
+  if (!existingParentStudentIds.has(sidUpper)) {
+    DEFAULT_USERS.push({
+      email: student.parentEmail || `parent.${student.studentId.toLowerCase()}@transcend.org`,
+      password: 'Parent@123',
+      role: 'Parent',
+      name: `Parent of ${student.studentName}`,
+      studentId: student.studentId,
+      isActive: true,
+    });
+    existingParentStudentIds.add(sidUpper);
+  }
+});
+
+// Ensure default parent users are named "Parent of [name of student]" and password is "Parent@123"
+const defaultStudentNameMap = new Map<string, string>(
+  DEFAULT_STUDENTS.map((s) => [s.studentId.trim().toUpperCase(), s.studentName])
+);
+
+DEFAULT_USERS.forEach((user) => {
+  if (user.role === 'Parent') {
+    user.password = 'Parent@123';
+    if (user.studentId) {
+      const sName = defaultStudentNameMap.get(user.studentId.trim().toUpperCase());
+      if (sName) {
+        user.name = `Parent of ${sName}`;
+      } else {
+        user.name = `Parent of ${user.studentId}`;
+      }
+    }
+  }
+});
+
+// Ensure every student's pickup/drop spot exists in their assigned route's stops list
+DEFAULT_STUDENTS.forEach((student) => {
+  if (student.route && student.pickupStop && student.pickupStop !== 'None') {
+    const routeObj = DEFAULT_ROUTES.find((r) => r.routeName === student.route);
+    if (routeObj) {
+      const cleanStop = student.pickupStop.trim().toLowerCase();
+      const exists = routeObj.stops.some(
+        (st) => st.stopName.trim().toLowerCase() === cleanStop || st.stopName.toLowerCase().includes(cleanStop)
+      );
+      if (!exists) {
+        routeObj.stops.push({
+          stopName: student.pickupStop,
+          arrivalTime: '07:40 AM',
+          dropTime: '04:45 PM',
+        });
+      }
+    }
+  }
+});
+
 export function getTodayDateString(): string {
   return new Date().toISOString().split('T')[0];
 }
@@ -23609,7 +23668,29 @@ export function writeTable<T>(tableName: string, data: T[]) {
 }
 
 export const dbService = {
-  getUsers: (): User[] => readTable<User>('transport_users'),
+  getUsers: (): User[] => {
+    const users = readTable<User>('transport_users');
+    const students = readTable<Student>('transport_students');
+    const studentMap = new Map<string, string>(
+      (students.length > 0 ? students : DEFAULT_STUDENTS).map((s) => [s.studentId.trim().toUpperCase(), s.studentName])
+    );
+    let updated = false;
+    const formattedUsers = users.map((u) => {
+      if (u.role === 'Parent') {
+        const sName = u.studentId ? studentMap.get(u.studentId.trim().toUpperCase()) : undefined;
+        const expectedName = u.studentId ? (sName ? `Parent of ${sName}` : `Parent of ${u.studentId}`) : u.name;
+        if (u.name !== expectedName || u.password !== 'Parent@123') {
+          updated = true;
+          return { ...u, name: expectedName, password: 'Parent@123' };
+        }
+      }
+      return u;
+    });
+    if (updated) {
+      writeTable<User>('transport_users', formattedUsers);
+    }
+    return formattedUsers;
+  },
   saveUsers: (users: User[]) => writeTable<User>('transport_users', users),
   getDrivers: (): Driver[] => readTable<Driver>('transport_drivers'),
   saveDrivers: (drivers: Driver[]) => writeTable<Driver>('transport_drivers', drivers),

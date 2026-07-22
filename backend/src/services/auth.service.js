@@ -2,8 +2,8 @@ import { UserRepository } from '../repositories/user.repository.js';
 import { generateToken } from '../config/jwt.js';
 
 export const AuthService = {
-  login: async (email, password) => {
-    const user = await UserRepository.findByEmailWithPassword(email);
+  login: async (identifier, password) => {
+    const user = await UserRepository.findByEmailOrStudentId(identifier);
     if (!user) {
       throw new Error('Invalid credentials');
     }

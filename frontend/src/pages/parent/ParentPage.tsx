@@ -347,13 +347,17 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                     </div>
                     <div>
                       <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Pickup Stop</span>
-                      <strong style={{ fontSize: '15px', color: '#10b981' }}>{student?.pickupStop}</strong>
-                      <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Estimated Arrival: {route.stops.find(s => s.stopName === student?.pickupStop)?.arrivalTime || '-'}</span>
+                      <strong style={{ fontSize: '15px', color: '#10b981' }}>{student?.pickupStop || 'Main Depot'}</strong>
+                      <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>
+                        Estimated Arrival: {route.stops.find(s => s.stopName.trim().toLowerCase() === (student?.pickupStop || '').trim().toLowerCase() || s.stopName.toLowerCase().includes((student?.pickupStop || '').toLowerCase()))?.arrivalTime || '07:40 AM'}
+                      </span>
                     </div>
                     <div>
                       <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Dropoff Stop</span>
-                      <strong style={{ fontSize: '15px', color: '#2563eb' }}>{student?.dropStop}</strong>
-                      <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>Estimated Return: {route.stops.find(s => s.stopName === student?.dropStop)?.dropTime || '-'}</span>
+                      <strong style={{ fontSize: '15px', color: '#2563eb' }}>{student?.dropStop || 'Main Depot'}</strong>
+                      <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>
+                        Estimated Return: {route.stops.find(s => s.stopName.trim().toLowerCase() === (student?.dropStop || '').trim().toLowerCase() || s.stopName.toLowerCase().includes((student?.dropStop || '').toLowerCase()))?.dropTime || '04:45 PM'}
+                      </span>
                     </div>
                   </div>
                 ) : (
@@ -373,8 +377,11 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({ activeTab, use
                     <div style={{ position: 'absolute', left: '7px', top: '8px', bottom: '8px', width: '2px', background: '#cbd5e1' }}></div>
                     
                     {route.stops.map((stop, idx) => {
-                      const isPickup = stop.stopName === student?.pickupStop;
-                      const isDrop = stop.stopName === student?.dropStop;
+                      const cleanName = stop.stopName.trim().toLowerCase();
+                      const cleanPickup = (student?.pickupStop || '').trim().toLowerCase();
+                      const cleanDrop = (student?.dropStop || '').trim().toLowerCase();
+                      const isPickup = cleanPickup !== '' && (cleanName === cleanPickup || cleanName.includes(cleanPickup) || cleanPickup.includes(cleanName));
+                      const isDrop = cleanDrop !== '' && (cleanName === cleanDrop || cleanName.includes(cleanDrop) || cleanDrop.includes(cleanName));
                       const isTarget = isPickup || isDrop;
                       
                       return (

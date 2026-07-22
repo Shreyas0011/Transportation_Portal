@@ -61,6 +61,6 @@ npm run build
 | Super Admin | superadmin@transcend.org | super123 |
 | Transport Head | head@transcend.org | head123 |
 | Driver | driver001@transcend.org | driver123 |
-| Parent | parent001@transcend.org | parent123 |
+| Parent | parent001@transcend.org | Parent@123 |
 
 > ⚠️ Change all passwords before deploying to production.

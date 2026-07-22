@@ -45,7 +45,7 @@ export const seedDatabase = async () => {
       const usersToInsert = [
         { email: "head@transcend.org", password: "head123", role: "Transport Head", name: "Rajesh Nair", employeeId: "EMP-HEAD-001", isActive: true },
         { email: "superadmin@transcend.org", password: "super123", role: "Super Admin", name: "Siddharth K T", employeeId: "EMP-SAD-001", isActive: true },
-        { email: "parent001@transcend.org", password: "parent123", role: "Parent", name: "Shreyas K S", studentId: "251P2474", isActive: true }
+        { email: "parent001@transcend.org", password: "Parent@123", role: "Parent", name: "Parent of Triveni T S", studentId: "251P2474", isActive: true }
       ];
 
       const vehiclesToInsert = [];
